@@ -1,0 +1,22 @@
+version: '2'
+
+services:
+  builder:
+    container_name: builder 
+    build:
+        context: ./
+        dockerfile: Dockerfile.build
+    networks:
+      easysrv: ~
+  tester:
+    container_name: tester 
+    build:
+        context: ./
+        dockerfile: Dockerfile.lettuce
+    networks:
+      easysrv: ~
+networks:
+  easysrv:
+    ipam:
+      config:
+      - subnet: 172.35.0.0/24
