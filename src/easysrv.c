@@ -107,6 +107,7 @@ pid_t popen_tty(int ac, char *av[], int *fd)
 
         rc = tcgetattr(fds, &slave_orig_term_settings);
         new_term_settings = slave_orig_term_settings;
+        new_term_settings.c_lflag &= ~ECHO; 
         tcsetattr(fds, TCSANOW, &new_term_settings);
 
         close(0);
@@ -232,7 +233,7 @@ int main(int argc, char *argv[])
     struct sigaction sa;
     char s[INET6_ADDRSTRLEN];
 
-    if (argc <= 3) {
+    if (argc <= 2) {
         fprintf(stderr, "Usage: %s port program_name [parameters]\n", argv[0]);
         exit(1);
     }
