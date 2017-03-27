@@ -1,9 +1,11 @@
 # EasySrv
 
-Is a generic server, primarily designed to facilitate quick creation of mocks and prototypes.
-EasySrv listens for incoming TCP connections, when a new connection is accepted,
-it pipes received data from the socket to the stdin of a handling process,
-meanwhile all output of the handling process is sent to the accepted connection session.
-A new external handling process is forked for each accepted connection,
-running a specified system command. When the process terminates, the connection is closed.
+It is a generic TCP server for microservices.
 
+It waits for incoming TCP connections, when a socket is accepted,
+it starts a custom process, piping stdin/stdout of that process to that socket.
+
+This allows application developers, to focus on their domain specifics,
+using simple standard IO interface, so that they don't have
+to worry about network connections. At the same time it does not bind
+the developers to a specific Application Layer protocol, like HTTP.
