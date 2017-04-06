@@ -15,17 +15,18 @@ obj/%.o : %.c
 
 easysrv: $(objects)
 	echo $< 
-	$(CC) $^ -o $@
+	$(CC) -static $^ -o $@
 
-popen: popen.c
-	echo $< 
-	$(CC) $^ -g -o $@
+.PHONY: clean indent docker-build docker-dist
 
-.PHONY: clean indent test
+docker-build:
+	@mkdir -p ./build
+	docker build -t easysrv-build -f Dockerfile.build .
+	docker run easysrv-build tar -c ./easysrv | tar x
 
-test: easysrv 
-	sh test.sh
-
+docker-dist: docker-build
+	docker build -t easysrv -f Dockerfile.easysrv .
+	
 clean:
 	@rm -f obj/*.o
 	@rm -f easysrv 

@@ -1,9 +1,9 @@
+# vim: syntax=dockerfile
 FROM alpine
 
 RUN apk add --update alpine-sdk
 
 ADD ./Makefile /Makefile
-
 ADD ./src /src
 
 RUN make

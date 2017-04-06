@@ -1,0 +1,7 @@
+# vim: syntax=dockerfile
+FROM alpine
+
+ADD ./easysrv /easysrv
+
+ENTRYPOINT ["/easysrv"]
+CMD ["23", "sh"]
