@@ -13,19 +13,19 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <sys/wait.h>
+#include <getopt.h>
+
+static struct option const longopts[] = {
+    {"tty", required_argument, NULL, 't'},
+    {"workers", required_argument, NULL, 'w'},
+    {NULL, 0, NULL, 0}
+};
 
 int exec_cmd(int ac, char *av[])
 {
-    char **cmd;
-    int i;
-    cmd = (char **) malloc(ac * sizeof(char *));
-    for (i = 1; i < ac; i++) {
-        cmd[i - 1] = strdup(av[i]);
-    }
-    cmd[i - 1] = NULL;
-    execvp(cmd[0], cmd);
+    execvp(av[0], &av[0]);
     fflush(stdout);
-    perror(cmd[0]);
+    perror(av[0]);
     exit(-1);
 }
 
@@ -107,7 +107,7 @@ pid_t popen_tty(int ac, char *av[], int *fd)
 
         rc = tcgetattr(fds, &slave_orig_term_settings);
         new_term_settings = slave_orig_term_settings;
-        new_term_settings.c_lflag &= ~ECHO; 
+        new_term_settings.c_lflag &= ~ECHO;
         tcsetattr(fds, TCSANOW, &new_term_settings);
 
         close(0);
@@ -145,7 +145,7 @@ void *get_in_addr(struct sockaddr *sa)
     return &(((struct sockaddr_in6 *) sa)->sin6_addr);
 }
 
-void process_req(int conn_fd, char *worker_name, int ac, char *av[])
+void process_req(int conn_fd, char *worker_name, int ac, char *av[], int tty)
 {
 
     int rc;
@@ -153,7 +153,7 @@ void process_req(int conn_fd, char *worker_name, int ac, char *av[])
 
     int writefd, readfd, errfd;
     pid_t pid;
-    if (1) {
+    if (tty) {
         int fdm;
         pid = popen_tty(ac, av, (int *) &fdm);
         writefd = readfd = fdm;
@@ -232,20 +232,48 @@ int main(int argc, char *argv[])
     struct sockaddr_storage their_addr;
     struct sigaction sa;
     char s[INET6_ADDRSTRLEN];
+    int c;
+    int workers;
+    int tty;
 
-    if (argc <= 2) {
-        fprintf(stderr, "Usage: %s port program_name [parameters]\n", argv[0]);
-        exit(1);
+    tty = 0;
+    workers = 2;
+    while ((c = getopt_long(argc, argv, "tw:", longopts, NULL)) != -1) {
+        int opt_fileno;
+
+        switch (c) {
+        case 't':
+            tty = 1;
+            break;
+        case 'w':
+            workers = atoi(optarg);
+            break;
+        case '?':
+            if (optopt == 'f') {
+                fprintf(stderr, "Option -%c requires an arg.\n", optopt);
+            } else if (isprint(optopt)) {
+                fprintf(stderr, "Unknown option `-%c'.\n", optopt);
+            } else {
+                fprintf(stderr, "Unknown option cahracter `\\x%x'.\n", optopt);
+            }
+        default:
+            abort();
+        }
     }
 
-    port_to = argv[1];
-
-    int ac = argc - 1;
-    char *av[ac];
     int i;
-    av[0] = argv[0];
-    for (i = 1; i < ac; i++)
-        av[i] = argv[i + 1];
+
+    port_to = argv[optind];
+    int offset = optind + 1;    // One for a port value
+
+    int ac = argc - offset + 1 + 1; // one for trailing null; one for IDK...
+    char *av[ac];
+    av[ac] = NULL;
+    char str[] = "";
+
+    for (i = offset; i < argc; i++) {
+        av[i - offset] = argv[i];
+    }
 
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;
@@ -254,7 +282,8 @@ int main(int argc, char *argv[])
 
     rc = getaddrinfo(NULL, port_to, &hints, &res);
     if (rc != 0) {
-        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rc));
+        fprintf(stderr, "getaddrinfo for port %s: %s\n", port_to,
+                gai_strerror(rc));
         exit(EXIT_FAILURE);
     }
 
@@ -289,7 +318,7 @@ int main(int argc, char *argv[])
 
     printf("server: waiting for connections...\n");
 
-    for (i = 0; i < 2; i++) {
+    for (i = 0; i < workers; i++) {
         pid_t pid;
         if ((pid = fork()) == -1) {
             exit(1);
@@ -312,7 +341,7 @@ int main(int argc, char *argv[])
                 printf("%s accepted a connection from %s %d \n", worker_name, s,
                        conn_fd);
 
-                process_req(conn_fd, worker_name, ac, av);
+                process_req(conn_fd, worker_name, ac, av, tty);
 
                 close(conn_fd);
             } while (1);
