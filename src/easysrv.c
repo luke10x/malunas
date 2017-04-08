@@ -146,7 +146,8 @@ void *get_in_addr(struct sockaddr *sa)
     return &(((struct sockaddr_in6 *) sa)->sin6_addr);
 }
 
-void trim_log(char *buf, int n) {
+void trim_log(char *buf, int n)
+{
     int loglen;
     if (n <= 80) {
         loglen = n;
@@ -166,7 +167,8 @@ void trim_log(char *buf, int n) {
     buf[loglen] = 0;
 }
 
-void process_req(int conn_fd, char *worker_name, int ac, char *av[], int tty, int verbose)
+void process_req(int conn_fd, char *worker_name, int ac, char *av[], int tty,
+                 int verbose)
 {
     int writefd, readfd, errfd;
     pid_t pid;
