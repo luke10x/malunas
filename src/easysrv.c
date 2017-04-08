@@ -18,6 +18,7 @@
 static struct option const longopts[] = {
     {"tty", required_argument, NULL, 't'},
     {"workers", required_argument, NULL, 'w'},
+    {"verbose", required_argument, NULL, 'v'},
     {NULL, 0, NULL, 0}
 };
 
@@ -165,7 +166,7 @@ void trim_log(char *buf, int n) {
     buf[loglen] = 0;
 }
 
-void process_req(int conn_fd, char *worker_name, int ac, char *av[], int tty)
+void process_req(int conn_fd, char *worker_name, int ac, char *av[], int tty, int verbose)
 {
     int writefd, readfd, errfd;
     pid_t pid;
@@ -203,10 +204,12 @@ void process_req(int conn_fd, char *worker_name, int ac, char *av[], int tty)
 
                     write(writefd, buf, n);
 
-                    trim_log(buf, n);
-
                     fprintf(stderr, "%s received %d bytes:\n", worker_name, n);
-                    fprintf(stderr, "\t%s\n", buf);
+
+                    if (verbose) {
+                        trim_log(buf, n);
+                        fprintf(stderr, "\t%s\n", buf);
+                    }
                     continue;
                 }
             }
@@ -217,10 +220,12 @@ void process_req(int conn_fd, char *worker_name, int ac, char *av[], int tty)
                 if ((n = read(poll_fds[0].fd, buf, 0x100)) >= 0) {
                     send(conn_fd, buf, n, 0);
 
-                    trim_log(buf, n);
-
                     fprintf(stderr, "%s sent %d bytes\n", worker_name, n);
-                    fprintf(stderr, "\t%s\n", buf);
+
+                    if (verbose) {
+                        trim_log(buf, n);
+                        fprintf(stderr, "\t%s\n", buf);
+                    }
                     continue;
                 }
             }
@@ -245,15 +250,20 @@ int main(int argc, char *argv[])
     int c;
     int workers;
     int tty;
+    int verbose;
 
     tty = 0;
+    verbose = 0;
     workers = 2;
-    while ((c = getopt_long(argc, argv, "tw:", longopts, NULL)) != -1) {
+    while ((c = getopt_long(argc, argv, "tw:v", longopts, NULL)) != -1) {
         int opt_fileno;
 
         switch (c) {
         case 't':
             tty = 1;
+            break;
+        case 'v':
+            verbose = 1;
             break;
         case 'w':
             workers = atoi(optarg);
@@ -351,7 +361,7 @@ int main(int argc, char *argv[])
                 printf("%s accepted a connection from %s (socket FD: %d)\n",
                        worker_name, s, conn_fd);
 
-                process_req(conn_fd, worker_name, ac, av, tty);
+                process_req(conn_fd, worker_name, ac, av, tty, verbose);
 
                 close(conn_fd);
             } while (1);
