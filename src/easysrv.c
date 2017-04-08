@@ -145,12 +145,28 @@ void *get_in_addr(struct sockaddr *sa)
     return &(((struct sockaddr_in6 *) sa)->sin6_addr);
 }
 
+void trim_log(char *buf, int n) {
+    int loglen;
+    if (n <= 80) {
+        loglen = n;
+    } else {
+        loglen = 80;
+    }
+    for (int i = 0; i < strlen(buf); i++) {
+        if (buf[i] >= 32) {
+            buf[i] = toupper(buf[i]);
+        } else {
+            buf[i] = '.';
+        }
+    }
+    if (n > 80) {
+        buf[loglen - 1] = 133;
+    }
+    buf[loglen] = 0;
+}
+
 void process_req(int conn_fd, char *worker_name, int ac, char *av[], int tty)
 {
-
-    int rc;
-    char input[150];
-
     int writefd, readfd, errfd;
     pid_t pid;
     if (tty) {
@@ -187,12 +203,10 @@ void process_req(int conn_fd, char *worker_name, int ac, char *av[], int tty)
 
                     write(writefd, buf, n);
 
+                    trim_log(buf, n);
 
-                    buf[n] = 0;
-                    for (int i = 0; i < strlen(buf); i++) {
-                        buf[i] = toupper(buf[i]);
-                    }
-                    fprintf(stderr, "%s received %d bytes\n", worker_name, n);
+                    fprintf(stderr, "%s received %d bytes:\n", worker_name, n);
+                    fprintf(stderr, "\t%s\n", buf);
                     continue;
                 }
             }
@@ -203,11 +217,10 @@ void process_req(int conn_fd, char *worker_name, int ac, char *av[], int tty)
                 if ((n = read(poll_fds[0].fd, buf, 0x100)) >= 0) {
                     send(conn_fd, buf, n, 0);
 
-                    buf[n] = 0;
-                    for (int i = 0; i < strlen(buf); i++) {
-                        buf[i] = toupper(buf[i]);
-                    }
+                    trim_log(buf, n);
+
                     fprintf(stderr, "%s sent %d bytes\n", worker_name, n);
+                    fprintf(stderr, "\t%s\n", buf);
                     continue;
                 }
             }
