@@ -177,17 +177,13 @@ void process_req(int conn_fd, char *worker_name, int ac, char *av[], int tty)
             break;
         } else if (ret == 0) {
             // Poll timeout
-            /*fprintf(stderr, "Time out\n"); */
         } else {
-            /*fprintf(stderr, "Polled:\n"); */
-            /*fprintf(stderr, "  poll_fds[0].revents=%d\n", poll_fds[0].revents); */
-            /*fprintf(stderr, "  poll_fds[1].revents=%d\n", poll_fds[1].revents); */
 
             if (poll_fds[1].revents & POLLIN) {
                 poll_fds[1].revents -= POLLIN;
                 int n;
-                char buf[0x10] = { 0 };
-                if ((n = read(poll_fds[1].fd, buf, 0x10)) >= 0) {
+                char buf[0x100] = { 0 };
+                if ((n = read(poll_fds[1].fd, buf, 0x100)) >= 0) {
 
                     write(writefd, buf, n);
 
@@ -196,7 +192,7 @@ void process_req(int conn_fd, char *worker_name, int ac, char *av[], int tty)
                     for (int i = 0; i < strlen(buf); i++) {
                         buf[i] = toupper(buf[i]);
                     }
-                    fprintf(stderr, "%s> %s", worker_name, buf);
+                    fprintf(stderr, "%s received %d bytes\n", worker_name, n);
                     continue;
                 }
             }
@@ -204,14 +200,14 @@ void process_req(int conn_fd, char *worker_name, int ac, char *av[], int tty)
                 poll_fds[0].revents -= POLLIN;
                 int n;
                 char buf[0x10] = { 0 };
-                if ((n = read(poll_fds[0].fd, buf, 0x10)) >= 0) {
+                if ((n = read(poll_fds[0].fd, buf, 0x100)) >= 0) {
                     send(conn_fd, buf, n, 0);
 
                     buf[n] = 0;
                     for (int i = 0; i < strlen(buf); i++) {
                         buf[i] = toupper(buf[i]);
                     }
-                    fprintf(stderr, "%s< %s", worker_name, buf);
+                    fprintf(stderr, "%s sent %d bytes\n", worker_name, n);
                     continue;
                 }
             }
@@ -219,6 +215,7 @@ void process_req(int conn_fd, char *worker_name, int ac, char *av[], int tty)
             break;
         }
     } while (1);
+    fprintf(stderr, "%s finished processing request\n", worker_name);
 }
 
 int main(int argc, char *argv[])
@@ -338,8 +335,8 @@ int main(int argc, char *argv[])
                 inet_ntop(their_addr.ss_family,
                           get_in_addr((struct sockaddr *) &their_addr), s,
                           sizeof s);
-                printf("%s accepted a connection from %s %d \n", worker_name, s,
-                       conn_fd);
+                printf("%s accepted a connection from %s (socket FD: %d)\n",
+                       worker_name, s, conn_fd);
 
                 process_req(conn_fd, worker_name, ac, av, tty);
 
