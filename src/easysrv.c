@@ -202,7 +202,13 @@ void process_req(int conn_fd, char *worker_name, int ac, char *av[], int tty,
                 poll_fds[1].revents -= POLLIN;
                 int n;
                 char buf[0x100] = { 0 };
+                int event_confirmed = 0;
                 if ((n = read(poll_fds[1].fd, buf, 0x100)) >= 0) {
+                    if (event_confirmed == 0 && n <= 0) {
+                        // It is a false event, perhaps client closed connection
+                        break;
+                    }
+                    event_confirmed = 1; // because if there was data, we read it all
 
                     write(writefd, buf, n);
 
