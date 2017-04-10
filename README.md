@@ -1,4 +1,4 @@
-# EasySrv
+# tcpexecd
 
 It is a generic TCP server for microservices.
 
@@ -14,5 +14,5 @@ the developers to a specific Application Layer protocol, like HTTP.
 
 To create a shell container:
 ```
-    docker run -it -p10023:23 easysrv 23 sh
+    docker run -it -p10023:23 tcpexecd 23 sh
 ```

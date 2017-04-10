@@ -1,7 +1,7 @@
-.DEFAULT_GOAL=easysrv
+.DEFAULT_GOAL=tcpexecd
 vpath %.c ./src
 
-src = easysrv.c 
+src = tcpexecd.c 
 objects = $(patsubst %.c,obj/%.o,$(src))
 
 $(objects): | obj
@@ -13,7 +13,7 @@ obj/%.o : %.c
 	@echo $<
 	$(CC) -c $< -g -o $@
 
-easysrv: $(objects)
+tcpexecd: $(objects)
 	echo $< 
 	$(CC) -static $^ -o $@
 
@@ -21,15 +21,15 @@ easysrv: $(objects)
 
 docker-build:
 	@mkdir -p ./build
-	docker build -t easysrv-build -f Dockerfile.build .
-	docker run easysrv-build tar -c ./easysrv | tar x
+	docker build -t tcpexecd-build -f Dockerfile.build .
+	docker run tcpexecd-build tar -c ./tcpexecd | tar x
 
 docker-dist: docker-build
-	docker build -t easysrv -f Dockerfile.easysrv .
+	docker build -t tcpexecd -f Dockerfile.tcpexecd .
 	
 clean:
 	@rm -f obj/*.o
-	@rm -f easysrv 
+	@rm -f tcpexecd 
 	@rm -f src/*~
 
 indent:
