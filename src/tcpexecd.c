@@ -182,11 +182,14 @@ void process_req(int conn_fd, char *worker_name, int ac, char *av[], int tty,
     }
 
     struct pollfd poll_fds[2];
-    poll_fds[0].fd = readfd;
-    poll_fds[0].events = POLLIN;
+    struct pollfd *read_pollfd = &poll_fds[0];
+    struct pollfd *conn_pollfd = &poll_fds[1];
 
-    poll_fds[1].fd = conn_fd;
-    poll_fds[1].events = POLLIN | POLLPRI;
+    read_pollfd->fd = readfd;
+    read_pollfd->events = POLLIN;
+
+    conn_pollfd->fd = conn_fd;
+    conn_pollfd->events = POLLIN | POLLPRI;
 
     do {
         int ret = poll((struct pollfd *) &poll_fds, 2, 1000);
@@ -198,12 +201,12 @@ void process_req(int conn_fd, char *worker_name, int ac, char *av[], int tty,
             // Poll timeout
         } else {
 
-            if (poll_fds[1].revents & POLLIN) {
-                poll_fds[1].revents -= POLLIN;
+            if (conn_pollfd->revents & POLLIN) {
+                conn_pollfd->revents -= POLLIN;
                 int n;
                 char buf[0x100] = { 0 };
                 int event_confirmed = 0;
-                if ((n = read(poll_fds[1].fd, buf, 0x100)) >= 0) {
+                if ((n = read(conn_pollfd->fd, buf, 0x100)) >= 0) {
                     if (event_confirmed == 0 && n <= 0) {
                         // It is a false event, perhaps client closed connection
                         break;
@@ -221,11 +224,11 @@ void process_req(int conn_fd, char *worker_name, int ac, char *av[], int tty,
                     continue;
                 }
             }
-            if (poll_fds[0].revents & POLLIN) {
-                poll_fds[0].revents -= POLLIN;
+            if (read_pollfd->revents & POLLIN) {
+                read_pollfd->revents -= POLLIN;
                 int n;
                 char buf[0x10] = { 0 };
-                if ((n = read(poll_fds[0].fd, buf, 0x100)) >= 0) {
+                if ((n = read(read_pollfd->fd, buf, 0x100)) >= 0) {
                     send(conn_fd, buf, n, 0);
 
                     fprintf(stderr, "%s sent %d bytes\n", worker_name, n);
