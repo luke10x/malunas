@@ -154,10 +154,8 @@ void trim_log(char *buf, int n)
     } else {
         loglen = 80;
     }
-    for (int i = 0; i < strlen(buf); i++) {
-        if (buf[i] >= 32) {
-            buf[i] = toupper(buf[i]);
-        } else {
+    for (int i = 0; i < loglen; i++) {
+        if (buf[i] < 32) {
             buf[i] = '.';
         }
     }
@@ -219,7 +217,7 @@ void process_req(int conn_fd, char *worker_name, int ac, char *av[], int tty,
 
                     if (verbose) {
                         trim_log(buf, n);
-                        fprintf(stderr, "\t%s\n", buf);
+                        fprintf(stderr, "%s\n", buf);
                     }
                     continue;
                 }
@@ -231,11 +229,11 @@ void process_req(int conn_fd, char *worker_name, int ac, char *av[], int tty,
                 if ((n = read(read_pollfd->fd, buf, 0x100)) >= 0) {
                     send(conn_fd, buf, n, 0);
 
-                    fprintf(stderr, "%s sent %d bytes\n", worker_name, n);
+                    fprintf(stderr, "%s sent %d bytes:\n", worker_name, n);
 
                     if (verbose) {
                         trim_log(buf, n);
-                        fprintf(stderr, "\t%s\n", buf);
+                        fprintf(stderr, "%s\n", buf);
                     }
                     continue;
                 }
