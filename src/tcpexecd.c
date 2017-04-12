@@ -1,5 +1,6 @@
 #define _XOPEN_SOURCE 600
 #include <stdlib.h>
+#include <assert.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <unistd.h>
@@ -15,12 +16,35 @@
 #include <sys/wait.h>
 #include <getopt.h>
 
+#define program_name "tcpexecd"
+
 static struct option const longopts[] = {
     {"tty", required_argument, NULL, 't'},
     {"workers", required_argument, NULL, 'w'},
     {"verbose", required_argument, NULL, 'v'},
     {NULL, 0, NULL, 0}
 };
+
+void usage(int status)
+{
+    printf("Usage: %s OPTION... PORT COMMAND\n", program_name);
+
+    fputs("\
+Listens for connections on a PORT and maps accepted socket received and sent \n\
+data to input and output of a COMMAND \n\n", stdout);
+
+    fputs("\
+Mandatory arguments to long options are mandatory for short options too.\n\
+", stdout);
+
+    fputs("\
+  -t, --tty            standard output stream buffering\n\
+  -w, --workers=NUMBER adjust standard input stream buffering\n\
+  -v, --verbose        adjust standard input stream buffering\n\
+", stdout);
+
+    exit(status);
+}
 
 int exec_cmd(int ac, char *av[])
 {
@@ -209,7 +233,7 @@ void process_req(int conn_fd, char *worker_name, int ac, char *av[], int tty,
                         // It is a false event, perhaps client closed connection
                         break;
                     }
-                    event_confirmed = 1; // because if there was data, we read it all
+                    event_confirmed = 1;    // because if there was data, we read it all
 
                     write(writefd, buf, n);
 
@@ -280,19 +304,19 @@ int main(int argc, char *argv[])
         case '?':
             if (optopt == 'f') {
                 fprintf(stderr, "Option -%c requires an arg.\n", optopt);
-            } else if (isprint(optopt)) {
-                fprintf(stderr, "Unknown option `-%c'.\n", optopt);
-            } else {
-                fprintf(stderr, "Unknown option cahracter `\\x%x'.\n", optopt);
             }
         default:
-            abort();
+            usage(1);
         }
     }
 
     int i;
 
     port_to = argv[optind];
+    if (port_to == 0) {
+        fprintf(stderr, "Port is not specified.\n");
+        usage(-1);
+    }
     int offset = optind + 1;    // One for a port value
 
     int ac = argc - offset + 1 + 1; // one for trailing null; one for IDK...
