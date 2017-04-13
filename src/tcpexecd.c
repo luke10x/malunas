@@ -266,6 +266,9 @@ void process_req(int conn_fd, char *worker_name, int ac, char *av[], int tty,
             break;
         }
     } while (1);
+
+    kill(pid, SIGKILL);
+
     fprintf(stderr, "%s finished processing request\n", worker_name);
 }
 
