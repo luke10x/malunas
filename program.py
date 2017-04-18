@@ -62,6 +62,13 @@ def exec_cmd(line, sock):
         exit(0)
         return
 
+    if re.compile(r'^ISTTY?').match(line):
+        if os.isatty(sys.stdout.fileno()):
+            sock.send("TTY=1\n")
+        else:
+            sock.send("TTY=0\n")
+        return
+            
     sock.send("UNKNOWN COMMAND: '%s'\n" % line)
     
 for line in read_line(sock):
