@@ -34,7 +34,6 @@ def step_impl(context):
         cmd.append('-v')
     cmd.extend(['-w', context.workers])
     cmd.extend([str(PORT), 'python', 'program.py'])
-
     context.server = subprocess.Popen(
         cmd,
         stdout = subprocess.PIPE,
@@ -54,7 +53,7 @@ def step_impl(context):
 def step_impl(context):
     context.controll_socket.send('WRITE hello\n')
 
-@when(u'program program flush output')
+@when(u'program flushes output')
 def step_impl(context):
     context.controll_socket.send('FLUSH\n')
 
@@ -63,9 +62,17 @@ def step_impl(context):
 def step_impl(context):
     context.controll_socket.send('EXIT\n')
 
+@then(u'client does not receive anything')
+def step_impl(context):
+    context.client.settimeout(2.0)
+    try:
+        line = context.client.recv(10) 
+    except socket.timeout:
+        return
+    assert(Nill == line), 'Message some output was unexpectedly read from socket'
+
 @then(u'client receives \'hello\'')
 def step_impl(context):
-
-    sys.stdout.flush()
+    sys.stdout.flush() # XXX not quite sure why it is here
     line = context.client.recv(10) 
     assert("hello\n" == line), 'Message not received by client'
