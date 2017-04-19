@@ -54,19 +54,20 @@ def step_impl(context):
 
 @when(u'program handles the request')
 def step_impl(context):
-    context.controll_socket = context.program_manager.accept()
+    connection, client_address = context.pm.accept()
+    context.control_socket = connection
 
 @when(u'program writes \'hello\'')
 def step_impl(context):
-    context.controll_socket.send('WRITE hello\n')
+    context.control_socket.send('WRITE hello\n')
 
 @when(u'program flushes output')
 def step_impl(context):
-    context.controll_socket.send('FLUSH\n')
+    context.control_socket.send('FLUSH\n')
 
 @when(u'program exits')
 def step_impl(context):
-    context.controll_socket.send('EXIT\n')
+    context.control_socket.send('EXIT\n')
 
 @then(u'client does not receive anything')
 def step_impl(context):
@@ -85,14 +86,14 @@ def step_impl(context):
 
 @then(u'program recognizes that it runs in TTY')
 def step_impl(context):
-    context.controll_socket.send('ISTTY?\n')
-    line = context.controll_socket.recv(10) 
+    context.control_socket.send('ISTTY?\n')
+    line = context.control_socket.recv(10) 
     assert("TTY=1" == line.strip()), 'program cannot confirm that it runs in a TTY'
 
 @then(u'program recognizes that it does not run in TTY')
 def step_impl(context):
-    context.controll_socket.send('ISTTY?\n')
-    line = context.controll_socket.recv(10) 
+    context.control_socket.send('ISTTY?\n')
+    line = context.control_socket.recv(10) 
     assert("TTY=0" == line.strip()), 'program cannot confirm that it does not run in a TTY'
 
 @when(u'second client connects')
@@ -104,22 +105,24 @@ def step_impl(context):
 @then(u'program does not handle request')
 def step_impl(context):
     try:
-        context.controll_socket = context.program_manager.accept()
+        connection, client_address = context.pm.accept()
+        context.control_socket = connection
     except socket.timeout:
         return
     assert(False), 'A program handles a request but that is not expected'
 
 @when(u'second program handles the request')
 def step_impl(context):
-    context.second_controll_socket = context.program_manager.accept()
+    connection, client_address = context.pm.accept()
+    context.second_control_socket = connection
 
 @when(u'second program writes \'hello\'')
 def step_impl(context):
-    context.second_controll_socket.send('WRITE hello\n')
+    context.second_control_socket.send('WRITE hello\n')
 
 @when(u'second program flushes')
 def step_impl(context):
-    context.second_controll_socket.send('FLUSH\n')
+    context.second_control_socket.send('FLUSH\n')
 
 @then(u'second client receives \'hello\'')
 def step_impl(context):
