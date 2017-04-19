@@ -22,6 +22,7 @@ class ProgramManager:
         self.servsock.listen(1)
 
     def accept(self):
+        self.servsock.settimeout(2.0)
         connection, client_address = self.servsock.accept()
         return connection
 

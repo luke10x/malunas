@@ -65,7 +65,6 @@ def step_impl(context):
     context.controll_socket.send('FLUSH\n')
 
 @when(u'program exits')
-@then(u'program exits')
 def step_impl(context):
     context.controll_socket.send('EXIT\n')
 
@@ -80,7 +79,6 @@ def step_impl(context):
 
 @then(u'client receives \'hello\'')
 def step_impl(context):
-    #sys.stdout.flush() # XXX not quite sure why it is here
     context.client.settimeout(2.0)
     line = context.client.recv(10)
     assert("hello" == line.strip()), "Message not received by client, but received: '%s'" % line
@@ -96,3 +94,37 @@ def step_impl(context):
     context.controll_socket.send('ISTTY?\n')
     line = context.controll_socket.recv(10) 
     assert("TTY=0" == line.strip()), 'program cannot confirm that it does not run in a TTY'
+
+@when(u'second client connects')
+def step_impl(context):
+    context.second_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_address = ('localhost', context.port)
+    context.second_client.connect(server_address)
+
+@then(u'program does not handle request')
+def step_impl(context):
+    try:
+        context.controll_socket = context.program_manager.accept()
+    except socket.timeout:
+        return
+    assert(False), 'A program handles a request but that is not expected'
+
+@when(u'second program handles the request')
+def step_impl(context):
+    context.second_controll_socket = context.program_manager.accept()
+
+@when(u'second program writes \'hello\'')
+def step_impl(context):
+    context.second_controll_socket.send('WRITE hello\n')
+
+@when(u'second program flushes')
+def step_impl(context):
+    context.second_controll_socket.send('FLUSH\n')
+
+@then(u'second client receives \'hello\'')
+def step_impl(context):
+    context.second_client.settimeout(2.0)
+    line = context.second_client.recv(10)
+    assert("hello" == line.strip()), "Message not received by client, but received: '%s'" % line
+
+
