@@ -1,4 +1,6 @@
 .DEFAULT_GOAL=tcpexecd
+CFLAGS=-std=c99
+
 vpath %.c ./src
 
 src = tcpexecd.c 
