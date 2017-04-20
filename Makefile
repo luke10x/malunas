@@ -17,7 +17,10 @@ tcpexecd: $(objects)
 	echo $< 
 	$(CC) -static $^ -o $@
 
-.PHONY: clean indent docker-build docker-dist
+behave: tcpexecd
+	behave
+
+.PHONY: clean indent docker-build docker-dist behave
 
 docker-build:
 	@mkdir -p ./build
