@@ -13,11 +13,11 @@ obj:
 
 obj/%.o : %.c
 	@echo $<
-	$(CC) -c $< -g -o $@
+	$(CC) $(CFLAGS) -c $< -g -o $@
 
 tcpexecd: $(objects)
 	echo $< 
-	$(CC) -static $^ -o $@
+	$(CC) $(CFLAGS) -static $^ -o $@
 
 behave: tcpexecd
 	behave
