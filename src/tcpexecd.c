@@ -390,8 +390,8 @@ int main(int argc, char *argv[])
 
     struct sockaddr *sa1 = res->ai_addr;
     inet_ntop(sa1->sa_family, get_in_addr(sa1), s, sizeof s);
-    printf("%s: listening on %s:%d for incomming connections...\n",
-           program_name, s, ntohs(*get_in_port(sa1)));
+    fprintf(stderr, "%s: Listening on %s:%d\n",
+            program_name, s, ntohs(*get_in_port(sa1)));
 
     for (i = 0; i < workers; i++) {
         pid_t pid;

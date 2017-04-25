@@ -3,10 +3,10 @@ import subprocess
 import socket
 import sys
 import os
+import re 
 import signal
 import random
-
-PORT = 10257
+import select
 
 @given(u'number of workers is {number}')
 def step_impl(context, number):
@@ -36,14 +36,21 @@ def step_impl(context):
     if context.verbose:
         cmd.append('-v')
     cmd.extend(['-w', context.workers])
-    context.port = PORT + random.randint(1, 1000)
-    cmd.extend([str(context.port), 'python', 'program.py'])
+    cmd.extend(['0', 'python', 'program.py'])
     context.server = None 
     context.server = subprocess.Popen(
         cmd,
         stdout = subprocess.PIPE,
         stderr = subprocess.PIPE,
         bufsize = 1)
+    poller = select.poll()
+    poller.register(context.server.stderr, select.POLLIN)
+    poll_result = poller.poll(5)
+    if poll_result:
+        line = context.server.stderr.readline()
+        print(line)
+        m = re.compile(r'^tcpexecd: Listening on 0.0.0.0:(?P<port>\d+)').match(line) 
+        context.port = int(m.group('port'))
     assert(context.server.poll() is None), 'server died: %s' % context.server.stderr.read(100) 
 
 @when(u'client connects')
@@ -71,7 +78,7 @@ def step_impl(context):
 
 @then(u'client does not receive anything')
 def step_impl(context):
-    context.client.settimeout(2.0)
+    context.client.settimeout(5.0)
     try:
         line = context.client.recv(10) 
     except socket.timeout:
@@ -126,8 +133,6 @@ def step_impl(context):
 
 @then(u'second client receives \'hello\'')
 def step_impl(context):
-    context.second_client.settimeout(2.0)
+    context.second_client.settimeout(5.0)
     line = context.second_client.recv(10)
     assert("hello" == line.strip()), "Message not received by client, but received: '%s'" % line
-
-
