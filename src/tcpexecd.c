@@ -170,6 +170,14 @@ void *get_in_addr(struct sockaddr *sa)
     return &(((struct sockaddr_in6 *) sa)->sin6_addr);
 }
 
+in_port_t *get_in_port(struct sockaddr *sa)
+{
+    if (sa->sa_family == AF_INET) {
+        return &(((struct sockaddr_in *) sa)->sin_port);
+    }
+    return &(((struct sockaddr_in6 *) sa)->sin6_port);
+}
+
 void trim_log(char *buf, int n)
 {
     int loglen;
@@ -348,11 +356,19 @@ int main(int argc, char *argv[])
         perror("socket");
         exit(1);
     }
+
     rc = bind(sockfd, res->ai_addr, res->ai_addrlen);
     if (rc != 0) {
         close(sockfd);
         perror("bind");
         exit(1);
+    }
+
+    rc = getsockname(sockfd, res->ai_addr, &res->ai_addrlen);
+    if (rc != 0) {
+        fprintf(stderr, "getsockname for port %s: %s\n", port_to,
+                gai_strerror(rc));
+        exit(EXIT_FAILURE);
     }
 
     rc = listen(sockfd, 5);
@@ -372,7 +388,10 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    printf("server: waiting for connections...\n");
+    struct sockaddr *sa1 = res->ai_addr;
+    inet_ntop(sa1->sa_family, get_in_addr(sa1), s, sizeof s);
+    printf("%s: listening on %s:%d for incomming connections...\n",
+           program_name, s, ntohs(*get_in_port(sa1)));
 
     for (i = 0; i < workers; i++) {
         pid_t pid;
