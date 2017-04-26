@@ -322,21 +322,19 @@ int main(int argc, char *argv[])
     }
 
     int i;
+    int ac;
 
-    port_to = argv[optind];
+    char **av;
+    av = argv + optind;
+    ac = argc - optind;
+
+    port_to = av[0];
+    av++;
+    ac--;
+
     if (port_to == 0) {
         fprintf(stderr, "Port is not specified.\n");
         usage(-1);
-    }
-    int offset = optind + 1;    // One for a port value
-
-    int ac = argc - offset + 1 + 1; // one for trailing null; one for IDK...
-    char *av[ac];
-    av[ac] = NULL;
-    char str[] = "";
-
-    for (i = offset; i < argc; i++) {
-        av[i - offset] = argv[i];
     }
 
     memset(&hints, 0, sizeof hints);
