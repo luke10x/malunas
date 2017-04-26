@@ -1,5 +1,7 @@
 # tcpexecd
 
+[![Build Status](https://travis-ci.org/normantas/tcpexecd.png)](https://travis-ci.org/normantas/tcpexecd)
+
 A generic TCP server, that uses arbitrary command as request handler.
 
 It waits for incoming TCP connections, when a socket is accepted,
