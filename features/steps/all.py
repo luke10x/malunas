@@ -8,6 +8,8 @@ import signal
 import random
 import select
 
+TIMEOUT = 5.0
+
 @given(u'number of workers is {number}')
 def step_impl(context, number):
     context.workers = number
@@ -45,7 +47,7 @@ def step_impl(context):
         bufsize = 1)
     poller = select.poll()
     poller.register(context.server.stderr, select.POLLIN)
-    poll_result = poller.poll(5)
+    poll_result = poller.poll(TIMEOUT)
     if poll_result:
         line = context.server.stderr.readline()
         print(line)
@@ -78,7 +80,7 @@ def step_impl(context):
 
 @then(u'client does not receive anything')
 def step_impl(context):
-    context.client.settimeout(5.0)
+    context.client.settimeout(TIMEOUT)
     try:
         line = context.client.recv(10) 
     except socket.timeout:
@@ -87,7 +89,7 @@ def step_impl(context):
 
 @then(u'client receives \'hello\'')
 def step_impl(context):
-    context.client.settimeout(2.0)
+    context.client.settimeout(TIMEOUT)
     line = context.client.recv(10)
     assert("hello" == line.strip()), "Message not received by client, but received: '%s'" % line
 
@@ -133,6 +135,6 @@ def step_impl(context):
 
 @then(u'second client receives \'hello\'')
 def step_impl(context):
-    context.second_client.settimeout(5.0)
+    context.second_client.settimeout(TIMEOUT)
     line = context.second_client.recv(10)
     assert("hello" == line.strip()), "Message not received by client, but received: '%s'" % line
