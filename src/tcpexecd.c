@@ -1,16 +1,8 @@
 #define _XOPEN_SOURCE 600
 #include <stdlib.h>
-#include <assert.h>
-#include <fcntl.h>
-#include <errno.h>
 #include <unistd.h>
 #include <stdio.h>
-#define __USE_BSD
-#include <termios.h>
-#include <sys/ioctl.h>
 #include <string.h>
-#include <ctype.h>
-#include <poll.h>
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <sys/wait.h>
