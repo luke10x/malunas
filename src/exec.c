@@ -145,8 +145,8 @@ void trim_log(char *buf, int n)
     buf[loglen] = 0;
 }
 
-void process_req(int conn_fd, char *worker_name, int ac, char *av[], int tty,
-                 int verbose)
+void mlns_exec_handle(int conn_fd, char *worker_name, int ac, char *av[],
+                      int tty, int verbose)
 {
     int writefd, readfd, errfd;
     pid_t pid;

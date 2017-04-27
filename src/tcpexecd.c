@@ -46,7 +46,8 @@ HANDLERS:\n\
   proxy    forward socket data to a new TCP connection\n\
 \n", stdout);
 
-    printf("Run '%s HANDLER --help' for more information on a handler.\n", program_name);
+    printf("Run '%s HANDLER --help' for more information on a handler.\n",
+           program_name);
 
     exit(status);
 }
@@ -206,7 +207,7 @@ int main(int argc, char *argv[])
                 printf("%s accepted a connection from %s (socket FD: %d)\n",
                        worker_name, s, conn_fd);
 
-                process_req(conn_fd, worker_name, ac, av, tty, verbose);
+                mlns_exec_handle(conn_fd, worker_name, ac, av, tty, verbose);
 
                 close(conn_fd);
             } while (1);
