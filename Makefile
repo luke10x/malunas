@@ -3,7 +3,7 @@ CFLAGS=-std=c99
 
 vpath %.c ./src
 
-src = tcpexecd.c 
+src = tcpexecd.c exec.c
 objects = $(patsubst %.c,obj/%.o,$(src))
 
 $(objects): | obj
