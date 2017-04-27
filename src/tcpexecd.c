@@ -27,21 +27,32 @@ static struct option const longopts[] = {
 
 void usage(int status)
 {
-    printf("Usage: %s OPTION... PORT COMMAND\n", program_name);
+    printf
+        ("usage: %s [-v|--verbose] [-w|--workers] <port> [<handler> [<args>]]\n\n",
+         program_name);
 
     fputs("\
-Listens for connections on a PORT and maps accepted socket received and sent \n\
-data to input and output of a COMMAND \n\n", stdout);
+Listens for incomming connections on a TCP port. All the data that is\n\
+received and sent from an accepted connection socket is mapped to one of the\n\
+supported handlers.\n\
+\n", stdout);
+
 
     fputs("\
+OPTIONS:\n\
 Mandatory arguments to long options are mandatory for short options too.\n\
-", stdout);
+  -w, --workers=NUMBER adjust number of preforked workers that accept connections\n\
+  -v, --verbose        print more output\n\
+\n", stdout);
+
 
     fputs("\
-  -t, --tty            standard output stream buffering\n\
-  -w, --workers=NUMBER adjust standard input stream buffering\n\
-  -v, --verbose        adjust standard input stream buffering\n\
-", stdout);
+HANDLERS:\n\
+  exec     maps to input and output of a locally executed command\n\
+  proxy    forward socket data to a new TCP connection\n\
+\n", stdout);
+
+    printf("Run '%s HANDLER --help' for more information on a handler.\n", program_name);
 
     exit(status);
 }
