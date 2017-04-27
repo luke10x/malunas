@@ -19,6 +19,16 @@ static struct option const longopts[] = {
     {NULL, 0, NULL, 0}
 };
 
+typedef struct {
+    char* name;
+    void (*handle_func)(int, char *, int , char **, int, int);
+} t_modulecfg;
+
+t_modulecfg  modules[] = {
+    { "exec", mlns_exec_handle},
+    { "proxy", mlns_exec_handle}
+};
+
 void usage(int status)
 {
     printf
@@ -130,6 +140,20 @@ int main(int argc, char *argv[])
         usage(-1);
     }
 
+    char *handler = av[0];
+    av++;
+    ac--;
+
+    t_modulecfg *module = &modules[0];
+    int len = sizeof(modules)/sizeof(modules[0]);
+    do {
+        // is it last module?
+        if (module == &modules[len-1]) {
+            fprintf(stderr, "Module '%s' is not a valid module\n", handler);
+            exit(1);
+        }
+    } while ((strcmp(handler, (module++)->name)) != 0);
+
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
@@ -207,7 +231,7 @@ int main(int argc, char *argv[])
                 printf("%s accepted a connection from %s (socket FD: %d)\n",
                        worker_name, s, conn_fd);
 
-                mlns_exec_handle(conn_fd, worker_name, ac, av, tty, verbose);
+                module->handle_func(conn_fd, worker_name, ac, av, tty, verbose);
 
                 close(conn_fd);
             } while (1);

@@ -38,7 +38,7 @@ def step_impl(context):
     if context.verbose:
         cmd.append('-v')
     cmd.extend(['-w', context.workers])
-    cmd.extend(['0', 'python', 'program.py'])
+    cmd.extend(['0', 'exec', 'python', 'program.py'])
     context.server = None 
     context.server = subprocess.Popen(
         cmd,
