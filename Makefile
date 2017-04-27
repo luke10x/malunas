@@ -22,7 +22,7 @@ tcpexecd: $(objects)
 behave: tcpexecd
 	behave
 
-.PHONY: clean indent docker-build docker-dist behave
+.PHONY: clean indent docker-build docker-dist behave hotswap
 
 docker-build:
 	@mkdir -p ./build
@@ -40,3 +40,6 @@ clean:
 indent:
 	indent -kr -ts4 -nut -l80 src/*.c
 	@rm -f src/*~
+
+hotswap:
+	./scripts/hotswap.sh
