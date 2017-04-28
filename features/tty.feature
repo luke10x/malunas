@@ -3,10 +3,7 @@ Feature: request handling program can be run in a TTY
 
   Scenario: With TTY client sees response immediately even if program does not flush
 
-    Given number of workers is 1
-      And TTY mode is on
-      And verbose mode is off
-      And server is started
+    Given server started with '--workers=1 --tty 0 exec python program.py' 
 
      When client connects
       And program handles the request
@@ -17,10 +14,7 @@ Feature: request handling program can be run in a TTY
 
   Scenario: Without TTY client does not see any response if program does not flush
 
-    Given number of workers is 1
-      And TTY mode is off
-      And verbose mode is off
-      And server is started
+    Given server started with '--workers=1 0 exec python program.py' 
 
      When client connects
       And program handles the request
@@ -34,10 +28,7 @@ Feature: request handling program can be run in a TTY
 
   Scenario: Without TTY client sees response immediately if program flushes
 
-    Given number of workers is 1
-      And TTY mode is off
-      And verbose mode is off
-      And server is started
+    Given server started with '--workers=1 0 exec python program.py' 
 
      When client connects
       And program handles the request

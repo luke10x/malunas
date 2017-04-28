@@ -14,9 +14,9 @@
 #define program_name "tcpexecd"
 
 static struct option const longopts[] = {
-    {"tty", required_argument, NULL, 't'},
+    {"tty", no_argument, NULL, 't'},
     {"workers", required_argument, NULL, 'w'},
-    {"verbose", required_argument, NULL, 'v'},
+    {"verbose", no_argument, NULL, 'v'},
     {NULL, 0, NULL, 0}
 };
 

@@ -2,10 +2,7 @@ Feature: Several workers are accepting client connections
 
   Scenario: one worker can only serve one client at a time
 
-    Given number of workers is 1
-      And TTY mode is off
-      And verbose mode is off
-      And server is started
+    Given server started with '--workers=1 0 exec python program.py' 
 
      When client connects  
       And second client connects
@@ -14,10 +11,7 @@ Feature: Several workers are accepting client connections
 
   Scenario: two workers can serve two clients at time  
 
-    Given number of workers is 2
-      And TTY mode is off
-      And verbose mode is off
-      And server is started
+    Given server started with '--workers=2 0 exec python program.py' 
 
      When client connects  
       And second client connects

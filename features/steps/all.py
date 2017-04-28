@@ -7,41 +7,14 @@ import re
 import signal
 import random
 import select
+import shlex
 
 TIMEOUT = 5.0
 
-@given(u'number of workers is {number}')
-def step_impl(context, number):
-    context.workers = number
-
-@given(u'TTY mode is off')
-def step_impl(context):
-    context.tty = False
-
-@given(u'TTY mode is on')
-def step_impl(context):
-    context.tty = True
-
-@given(u'verbose mode is on')
-def step_impl(context):
-    context.verbose = True
-
-@given(u'verbose mode is off')
-def step_impl(context):
-    context.verbose = False
-
-@given(u'server is started')
-def step_impl(context):
-    cmd = ['./tcpexecd']
-    if context.tty:
-        cmd.append('-t')
-    if context.verbose:
-        cmd.append('-v')
-    cmd.extend(['-w', context.workers])
-    cmd.extend(['0', 'exec', 'python', 'program.py'])
-    context.server = None 
+@given(u'server started with \'{cmd}\'')
+def step_impl(context, cmd):
     context.server = subprocess.Popen(
-        cmd,
+        shlex.split('./tcpexecd ' + cmd),
         stdout = subprocess.PIPE,
         stderr = subprocess.PIPE,
         bufsize = 1)
