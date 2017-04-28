@@ -2,7 +2,7 @@
 
 #define exec_h__
 
-void mlns_exec_handle(int conn_fd, char *worker_name, int ac, char *av[], int tty,
+void mlns_exec_handle(int conn_fd, int logfd, char *worker_name, int ac, char *av[], int tty,
                  int verbose);
 
 #endif

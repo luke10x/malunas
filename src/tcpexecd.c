@@ -1,4 +1,4 @@
-#define _XOPEN_SOURCE 600
+#define _XOPEN_SOURCE 700
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -7,6 +7,7 @@
 #include <arpa/inet.h>
 #include <sys/wait.h>
 #include <getopt.h>
+#include <poll.h>
 
 #include "exec.h"
 
@@ -20,13 +21,13 @@ static struct option const longopts[] = {
 };
 
 typedef struct {
-    char* name;
-    void (*handle_func)(int, char *, int , char **, int, int);
+    char *name;
+    void (*handle_func) (int, int, char *, int, char **, int, int);
 } t_modulecfg;
 
-t_modulecfg  modules[] = {
-    { "exec", mlns_exec_handle},
-    { "proxy", mlns_exec_handle}
+t_modulecfg modules[] = {
+    {"exec", mlns_exec_handle},
+    {"proxy", mlns_exec_handle}
 };
 
 void usage(int status)
@@ -145,10 +146,10 @@ int main(int argc, char *argv[])
     ac--;
 
     t_modulecfg *module = &modules[0];
-    int len = sizeof(modules)/sizeof(modules[0]);
+    int len = sizeof(modules) / sizeof(modules[0]);
     do {
         // is it last module?
-        if (module == &modules[len-1]) {
+        if (module == &modules[len - 1]) {
             fprintf(stderr, "Module '%s' is not a valid module\n", handler);
             exit(1);
         }
@@ -208,34 +209,80 @@ int main(int argc, char *argv[])
     fprintf(stderr, "%s: Listening on %s:%d\n",
             program_name, s, ntohs(*get_in_port(sa1)));
 
+    int logs[workers][2];
+
+    struct pollfd poll_fds[workers];
+
     for (i = 0; i < workers; i++) {
         pid_t pid;
+        pipe(logs[i]);
+
         if ((pid = fork()) == -1) {
             exit(1);
         } else if (pid == 0) {
             char worker_name[10];
-            sprintf(worker_name, "WRK-%d", i);
+
+            sprintf(worker_name, "PID-%d", getpid());
+
+            close(logs[i][0]);
+            int log = logs[i][1];
 
             // Accept loop
             do {
                 socklen_t addr_size;
                 addr_size = sizeof their_addr;
 
-                printf("%s is waiting...\n", worker_name);
+                dprintf(log, "%s is waiting...\n", worker_name);
+
                 conn_fd =
                     accept(sockfd, (struct sockaddr *) &their_addr, &addr_size);
 
                 inet_ntop(their_addr.ss_family,
                           get_in_addr((struct sockaddr *) &their_addr), s,
                           sizeof s);
-                printf("%s accepted a connection from %s (socket FD: %d)\n",
-                       worker_name, s, conn_fd);
 
-                module->handle_func(conn_fd, worker_name, ac, av, tty, verbose);
+                dprintf(log,
+                        "%s accepted a connection from %s (socket FD: %d)\n",
+                        worker_name, s, conn_fd);
+
+                module->handle_func(conn_fd, log, worker_name, ac, av, tty,
+                                    verbose);
 
                 close(conn_fd);
             } while (1);
         }
+
+        close(logs[i][1]);
+
+        poll_fds[i].fd = logs[i][0];
+        poll_fds[i].events = POLLIN;
     }
+
+    do {
+        int ret = poll((struct pollfd *) &poll_fds, workers, 1000);
+        if (ret == -1) {
+            perror("poll");
+            break;
+        } else if (ret == 0) {
+            // Poll timeout
+        } else {
+
+            for (i = 0; i < workers; i++) {
+                if (poll_fds[i].revents & POLLIN) {
+                    poll_fds[i].revents -= POLLIN;
+
+                    printf("got something from pipe %d)\n", i);
+
+                    int n;
+                    char buf[0x10] = { 0 };
+                    if ((n = read(poll_fds[i].fd, buf, 0x100)) >= 0) {
+                        dprintf(1, "Pipe: %d received '%s'\n", i, buf);
+                        continue;
+                    }
+                }
+            }
+        }
+    } while (1);
+
     while (wait(NULL) > 0);
 }

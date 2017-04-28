@@ -1,4 +1,4 @@
-#define _XOPEN_SOURCE 600
+#define _XOPEN_SOURCE 700
 #include <stdlib.h>
 #include <fcntl.h>
 #include <errno.h>
@@ -145,8 +145,8 @@ void trim_log(char *buf, int n)
     buf[loglen] = 0;
 }
 
-void mlns_exec_handle(int conn_fd, char *worker_name, int ac, char *av[],
-                      int tty, int verbose)
+void mlns_exec_handle(int conn_fd, int logfd, char *worker_name, int ac,
+                      char *av[], int tty, int verbose)
 {
     int writefd, readfd, errfd;
     pid_t pid;
@@ -191,13 +191,11 @@ void mlns_exec_handle(int conn_fd, char *worker_name, int ac, char *av[],
                     }
                     event_confirmed = 1;    // because if there was data, we read it all
 
-                    write(writefd, buf, n);
-
-                    fprintf(stderr, "%s received %d bytes:\n", worker_name, n);
+                    dprintf(logfd, "%s received %d bytes:\n", worker_name, n);
 
                     if (verbose) {
                         trim_log(buf, n);
-                        fprintf(stderr, "%s\n", buf);
+                        dprintf(logfd, "%s\n", buf);
                     }
                     continue;
                 }
@@ -209,11 +207,11 @@ void mlns_exec_handle(int conn_fd, char *worker_name, int ac, char *av[],
                 if ((n = read(read_pollfd->fd, buf, 0x100)) >= 0) {
                     send(conn_fd, buf, n, 0);
 
-                    fprintf(stderr, "%s sent %d bytes:\n", worker_name, n);
+                    dprintf(logfd, "%s sent %d bytes:\n", worker_name, n);
 
                     if (verbose) {
                         trim_log(buf, n);
-                        fprintf(stderr, "%s\n", buf);
+                        dprintf(logfd, "%s\n", buf);
                     }
                     continue;
                 }
@@ -225,5 +223,5 @@ void mlns_exec_handle(int conn_fd, char *worker_name, int ac, char *av[],
 
     kill(pid, SIGKILL);
 
-    fprintf(stderr, "%s finished processing request\n", worker_name);
+    dprintf(logfd, "%s finished processing request\n", worker_name);
 }
