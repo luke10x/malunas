@@ -1,9 +1,9 @@
-.DEFAULT_GOAL=tcpexecd
+.DEFAULT_GOAL=malunas
 CFLAGS=-std=c99
 
 vpath %.c ./src
 
-src = tcpexecd.c exec.c
+src = malunas.c exec.c
 objects = $(patsubst %.c,obj/%.o,$(src))
 
 $(objects): | obj
@@ -15,26 +15,26 @@ obj/%.o : %.c
 	@echo $<
 	$(CC) $(CFLAGS) -c $< -g -o $@
 
-tcpexecd: $(objects)
+malunas: $(objects)
 	echo $< 
 	$(CC) $(CFLAGS) -static $^ -o $@
 
-behave: tcpexecd
+behave: malunas
 	behave
 
 .PHONY: clean indent docker-build docker-dist behave hotswap
 
 docker-build:
 	@mkdir -p ./build
-	docker build -t tcpexecd-build -f Dockerfile.build .
-	docker run tcpexecd-build tar -c ./tcpexecd | tar x
+	docker build -t malunas-build -f Dockerfile.build .
+	docker run malunas-build tar -c ./malunas | tar x
 
 docker-dist: docker-build
-	docker build -t tcpexecd -f Dockerfile.tcpexecd .
+	docker build -t malunas -f Dockerfile.malunas .
 	
 clean:
 	@rm -f obj/*.o
-	@rm -f tcpexecd 
+	@rm -f malunas 
 	@rm -f src/*~
 
 indent:

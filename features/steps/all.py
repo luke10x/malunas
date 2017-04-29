@@ -14,7 +14,7 @@ TIMEOUT = 5.0
 @given(u'server started with \'{cmd}\'')
 def step_impl(context, cmd):
     context.server = subprocess.Popen(
-        shlex.split('./tcpexecd ' + cmd),
+        shlex.split('./malunas ' + cmd),
         stdout = subprocess.PIPE,
         stderr = subprocess.PIPE,
         bufsize = 1)
@@ -24,7 +24,7 @@ def step_impl(context, cmd):
     if poll_result:
         line = context.server.stderr.readline()
         print(line)
-        m = re.compile(r'^tcpexecd: Listening on 0.0.0.0:(?P<port>\d+)').match(line) 
+        m = re.compile(r'^malunas: Listening on 0.0.0.0:(?P<port>\d+)').match(line) 
         context.port = int(m.group('port'))
     assert(context.server.poll() is None), 'server died: %s' % context.server.stderr.read(100) 
 

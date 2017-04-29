@@ -11,7 +11,7 @@
 
 #include "exec.h"
 
-#define program_name "tcpexecd"
+#define program_name "malunas"
 
 static struct option const longopts[] = {
     {"tty", no_argument, NULL, 't'},

@@ -1,7 +1,7 @@
 # vim: syntax=dockerfile
 FROM alpine
 
-ADD ./tcpexecd /tcpexecd
+ADD ./malunas /malunas
 
-ENTRYPOINT ["/tcpexecd"]
+ENTRYPOINT ["/malunas"]
 CMD ["23", "sh"]

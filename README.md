@@ -1,26 +1,27 @@
-# tcpexecd
+# Malunas: MITM debugging toolkit
 
-[![Build Status](https://travis-ci.org/normantas/tcpexecd.png)](https://travis-ci.org/normantas/tcpexecd)
+[![Build Status](https://travis-ci.org/normantas/malunas.png)](https://travis-ci.org/normantas/malunas)
 
-A generic TCP server, that uses arbitrary command as request handler.
+Replacement server for client debugging.
 
 It waits for incoming TCP connections, when a socket is accepted,
-it starts a custom process, piping stdin/stdout of that process to that socket.
+it pipes the all data sent and received through that socket to
+a backend module.
 
-This allows application developers, to focus on their domain specifics,
-using simple standard IO interface, so that they don't have
-to worry about network connections. At the same time it does not bind
-the developers to a specific Application Layer protocol, like HTTP.
+Currently supported backend modules are:
+- exec: allows using an external command to handle the request; 
+- proxy: forwards request to a real backend, while monitoring the data
+  which passes through
 
 ## Usage
 
 ```
-    tcpexecd [-t] [-w NUMBER] [-v] PORT COMMAND
+    malunas [-t] [-w <workers>] port module [args...] 
 ```
 
 ## Docker
 
 To create a shell container:
 ```
-    docker run -it -p10023:23 tcpexecd 23 sh
+    docker run -it -p10023:23 malunas 23 exec sh
 ```
