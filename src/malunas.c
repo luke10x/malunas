@@ -217,6 +217,9 @@ int main(int argc, char *argv[])
         pid_t pid;
         pipe(logs[i]);
 
+        poll_fds[i].fd = logs[i][0];
+        poll_fds[i].events = POLLIN;
+
         if ((pid = fork()) == -1) {
             exit(1);
         } else if (pid == 0) {
@@ -254,8 +257,6 @@ int main(int argc, char *argv[])
 
         close(logs[i][1]);
 
-        poll_fds[i].fd = logs[i][0];
-        poll_fds[i].events = POLLIN;
     }
 
     do {
@@ -271,14 +272,12 @@ int main(int argc, char *argv[])
                 if (poll_fds[i].revents & POLLIN) {
                     poll_fds[i].revents -= POLLIN;
 
-                    printf("got something from pipe %d)\n", i);
-
                     int n;
                     char buf[0x10] = { 0 };
-                    if ((n = read(poll_fds[i].fd, buf, 0x100)) >= 0) {
-                        dprintf(1, "Pipe: %d received '%s'\n", i, buf);
-                        continue;
+                    while ((n = read(poll_fds[i].fd, buf, 0x100)) >= 0) {
+                        dprintf(1, "Pipe: %d received:\n%s\n", i, buf);
                     }
+                    continue;
                 }
             }
         }
