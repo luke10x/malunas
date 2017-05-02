@@ -191,6 +191,7 @@ void mlns_exec_handle(int conn_fd, int logfd, int ac,
                     }
                     event_confirmed = 1;    // because if there was data, we read it all
 
+                    write(writefd, buf, n);
 
                     if (verbose) {
                         trim_log(buf, n);
@@ -206,9 +207,8 @@ void mlns_exec_handle(int conn_fd, int logfd, int ac,
                 int n;
                 char buf[0x10] = { 0 };
                 if ((n = read(read_pollfd->fd, buf, 0x100)) >= 0) {
-                    send(conn_fd, buf, n, 0);
 
-                    dprintf(logfd, "sent %d bytes:", n);
+                    send(conn_fd, buf, n, 0);
 
                     if (verbose) {
                         trim_log(buf, n);
