@@ -22,7 +22,7 @@ static struct option const longopts[] = {
 
 typedef struct {
     char *name;
-    void (*handle_func) (int, int, char *, int, char **, int, int);
+    void (*handle_func) (int, int, int, char **, int, int);
 } t_modulecfg;
 
 t_modulecfg modules[] = {
@@ -210,6 +210,7 @@ int main(int argc, char *argv[])
             program_name, s, ntohs(*get_in_port(sa1)));
 
     int logs[workers][2];
+    char *worker_names[workers];
 
     struct pollfd poll_fds[workers];
 
@@ -223,9 +224,6 @@ int main(int argc, char *argv[])
         if ((pid = fork()) == -1) {
             exit(1);
         } else if (pid == 0) {
-            char worker_name[10];
-
-            sprintf(worker_name, "PID-%d", getpid());
 
             close(logs[i][0]);
             int log = logs[i][1];
@@ -235,7 +233,7 @@ int main(int argc, char *argv[])
                 socklen_t addr_size;
                 addr_size = sizeof their_addr;
 
-                dprintf(log, "%s is waiting...\n", worker_name);
+                dprintf(log, "waiting for a connection...");
 
                 conn_fd =
                     accept(sockfd, (struct sockaddr *) &their_addr, &addr_size);
@@ -245,11 +243,10 @@ int main(int argc, char *argv[])
                           sizeof s);
 
                 dprintf(log,
-                        "%s accepted a connection from %s (socket FD: %d)\n",
-                        worker_name, s, conn_fd);
+                        "accepted connection from %s (socket FD: %d)",
+                        s, conn_fd);
 
-                module->handle_func(conn_fd, log, worker_name, ac, av, tty,
-                                    verbose);
+                module->handle_func(conn_fd, log, ac, av, tty, verbose);
 
                 close(conn_fd);
             } while (1);
@@ -257,6 +254,10 @@ int main(int argc, char *argv[])
 
         close(logs[i][1]);
 
+        char *worker_name = malloc(10);
+        sprintf(worker_name, "PID:%d", pid);
+        worker_names[i] = worker_name;
+        worker_names[i][9] = 0;
     }
 
     do {
@@ -274,9 +275,9 @@ int main(int argc, char *argv[])
 
                     int n;
                     char buf[0x100 + 1] = { 0 };
-                    while ((n = read(poll_fds[i].fd, buf, 0x100)) >= 0) {
+                    while (( n = read(poll_fds[i].fd, buf, 0x100)) > 0) {
                         buf[n] = 0;
-                        dprintf(1, "Pipe: %d received:\n%s\n", i, buf);
+                        dprintf(1, "%s >>> %s\n", worker_names[i], buf);
                     }
                     continue;
                 }

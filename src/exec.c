@@ -145,7 +145,7 @@ void trim_log(char *buf, int n)
     buf[loglen] = 0;
 }
 
-void mlns_exec_handle(int conn_fd, int logfd, char *worker_name, int ac,
+void mlns_exec_handle(int conn_fd, int logfd, int ac,
                       char *av[], int tty, int verbose)
 {
     int writefd, readfd, errfd;
@@ -191,11 +191,12 @@ void mlns_exec_handle(int conn_fd, int logfd, char *worker_name, int ac,
                     }
                     event_confirmed = 1;    // because if there was data, we read it all
 
-                    dprintf(logfd, "%s received %d bytes:\n", worker_name, n);
 
                     if (verbose) {
                         trim_log(buf, n);
-                        dprintf(logfd, "%s\n", buf);
+                        dprintf(logfd, "received %d bytes: %s", n, buf);
+                    } else {
+                        dprintf(logfd, "received %d.", n);
                     }
                     continue;
                 }
@@ -207,11 +208,13 @@ void mlns_exec_handle(int conn_fd, int logfd, char *worker_name, int ac,
                 if ((n = read(read_pollfd->fd, buf, 0x100)) >= 0) {
                     send(conn_fd, buf, n, 0);
 
-                    dprintf(logfd, "%s sent %d bytes:\n", worker_name, n);
+                    dprintf(logfd, "sent %d bytes:", n);
 
                     if (verbose) {
                         trim_log(buf, n);
-                        dprintf(logfd, "%s\n", buf);
+                        dprintf(logfd, "sent %d bytes: %s", n, buf);
+                    } else {
+                        dprintf(logfd, "sent %d.", n);
                     }
                     continue;
                 }
@@ -223,5 +226,5 @@ void mlns_exec_handle(int conn_fd, int logfd, char *worker_name, int ac,
 
     kill(pid, SIGKILL);
 
-    dprintf(logfd, "%s finished processing request\n", worker_name);
+    dprintf(logfd, "finished processing request");
 }
