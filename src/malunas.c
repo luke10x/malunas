@@ -273,8 +273,9 @@ int main(int argc, char *argv[])
                     poll_fds[i].revents -= POLLIN;
 
                     int n;
-                    char buf[0x10] = { 0 };
+                    char buf[0x100 + 1] = { 0 };
                     while ((n = read(poll_fds[i].fd, buf, 0x100)) >= 0) {
+                        buf[n] = 0;
                         dprintf(1, "Pipe: %d received:\n%s\n", i, buf);
                     }
                     continue;
