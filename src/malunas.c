@@ -275,11 +275,9 @@ int main(int argc, char *argv[])
 
                     int n;
                     char buf[0x100 + 1] = { 0 };
-                    while (( n = read(poll_fds[i].fd, buf, 0x100)) > 0) {
-                        buf[n] = 0;
-                        dprintf(1, "%s >>> %s\n", worker_names[i], buf);
-                    }
-                    continue;
+                    n = read(poll_fds[i].fd, buf, 0x100);
+                    buf[n] = 0;
+                    dprintf(1, "%s >>> %s\n", worker_names[i], buf);
                 }
             }
         }
