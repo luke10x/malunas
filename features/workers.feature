@@ -2,7 +2,7 @@ Feature: Several workers are accepting client connections
 
   Scenario: one worker can only serve one client at a time
 
-    Given server started with '--workers=1 0 exec python program.py' 
+    Given server started with '--workers=1 0 exec python scripts/program.py' 
 
      When client connects  
       And second client connects
@@ -11,7 +11,7 @@ Feature: Several workers are accepting client connections
 
   Scenario: two workers can serve two clients at time  
 
-    Given server started with '--workers=2 0 exec python program.py' 
+    Given server started with '--workers=2 0 exec python scripts/program.py' 
 
      When client connects  
       And second client connects

@@ -37,8 +37,8 @@ docker-alpine-build: build/malunas.alpine
 	docker build -t malunas:alpine -f docker/Dockerfile.alpine .
 	
 clean:
-	@rm -f obj/*.o
-	@rm -f build/*
+	@rm -rf obj/
+	@rm -rf build/
 	@rm -f malunas 
 	@rm -f malunas.static
 	@rm -f src/*~

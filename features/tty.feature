@@ -3,7 +3,7 @@ Feature: request handling program can be run in a TTY
 
   Scenario: With TTY client sees response immediately even if program does not flush
 
-    Given server started with '--workers=1 --tty 0 exec python program.py' 
+    Given server started with '--workers=1 --tty 0 exec python scripts/program.py' 
 
      When client connects
       And program handles the request
@@ -14,7 +14,7 @@ Feature: request handling program can be run in a TTY
 
   Scenario: Without TTY client does not see any response if program does not flush
 
-    Given server started with '--workers=1 0 exec python program.py' 
+    Given server started with '--workers=1 0 exec python scripts/program.py' 
 
      When client connects
       And program handles the request
@@ -28,7 +28,7 @@ Feature: request handling program can be run in a TTY
 
   Scenario: Without TTY client sees response immediately if program flushes
 
-    Given server started with '--workers=1 0 exec python program.py' 
+    Given server started with '--workers=1 0 exec python scripts/program.py' 
 
      When client connects
       And program handles the request
