@@ -1,7 +1,7 @@
 # vim: syntax=dockerfile
 FROM alpine
 
-ADD ./malunas /malunas
+ADD ./build/malunas.alpine /malunas
 
 ENTRYPOINT ["/malunas"]
 CMD ["23", "sh"]

@@ -7,3 +7,5 @@ ADD ./Makefile /Makefile
 ADD ./src /src
 
 RUN make
+
+RUN mv malunas malunas.alpine

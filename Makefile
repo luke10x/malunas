@@ -17,24 +17,30 @@ obj/%.o : %.c
 
 malunas: $(objects)
 	echo $< 
+	$(CC) $(CFLAGS) $^ -o $@
+
+build/malunas.static: $(objects)
+	echo $<
 	$(CC) $(CFLAGS) -static $^ -o $@
+
+build/malunas.alpine:
+	@mkdir -p ./build
+	docker build -t malunas-build -f docker/Dockerfile.alpine.build .
+	docker run malunas-build tar -c malunas.alpine | tar -x -C build
 
 behave: malunas
 	behave
 
-.PHONY: clean indent docker-build docker-dist behave hotswap
+.PHONY: clean indent docker-alpine-build behave hotswap
 
-docker-build:
-	@mkdir -p ./build
-	docker build -t malunas-build -f Dockerfile.build .
-	docker run malunas-build tar -c ./malunas | tar x
-
-docker-dist: docker-build
-	docker build -t malunas -f Dockerfile.malunas .
+docker-alpine-build: build/malunas.alpine
+	docker build -t malunas:alpine -f docker/Dockerfile.alpine .
 	
 clean:
 	@rm -f obj/*.o
+	@rm -f build/*
 	@rm -f malunas 
+	@rm -f malunas.static
 	@rm -f src/*~
 
 indent:
