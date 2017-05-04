@@ -1,18 +1,20 @@
-# Malunas: server debugging toolkit
+# Malunas: TCP connection proxy toolkit
 
 [![Build Status](https://travis-ci.org/normantas/malunas.png)](https://travis-ci.org/normantas/malunas)
 
-Replacement server for client debugging.
-
-It waits for incoming TCP connections, when a socket is accepted,
+Server that waits for incoming TCP connections, when a socket is accepted,
 it pipes the all data sent and received through that socket to
 a backend module.
 
 ## Usage
 
 ```
-    malunas [-w <workers>] port module [args...] 
+    malunas [-w <workers>] <port> <module> [args...] 
 ```
+- -w, --workers: the number of workers;
+- port: server listening TCP port;
+- module: backend module;
+- args: module arguments.
 
 ## Modules
 
@@ -25,10 +27,11 @@ It maps input and output of the request to a process started by an arbitrary com
 
 Usage:
 ```
-    malunas <port> exec [-t] <command...>
+    malunas [opts...] <port> exec [-t] <command...>
 ```
-Here command can be any executable followed by parameters.
--t, --tty specifies whether the program should be run in a separate TTY.
+- opts: general options;
+- command: any executable followed by parameters;
+- -t, --tty: specifies whether the program should be run in a separate TTY.
 
 ## Docker
 
