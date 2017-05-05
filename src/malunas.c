@@ -103,7 +103,7 @@ int main(int argc, char *argv[])
     tty = 0;
     verbose = 0;
     workers = 2;
-    while ((c = getopt_long(argc, argv, "tw:v", longopts, NULL)) != -1) {
+    while ((c = getopt_long(argc, argv, "+tw:v", longopts, NULL)) != -1) {
         int opt_fileno;
 
         switch (c) {
