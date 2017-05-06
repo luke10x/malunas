@@ -145,9 +145,46 @@ void trim_log(char *buf, int n)
     buf[loglen] = 0;
 }
 
-void mlns_exec_handle(int conn_fd, int logfd, int ac,
-                      char *av[], int tty, int verbose)
+static struct option const exec_longopts[] = {
+    {"tty", no_argument, NULL, 't'},
+    {NULL, 0, NULL, 0}
+};
+
+
+void exec_usage(int status)
 {
+    fputs("\
+HELLO\n\
+\n", stdout);
+    exit(1);
+}
+
+void mlns_exec_handle(int conn_fd, int logfd, int argc,
+                      char *argv[], int verbose)
+{
+    int c;
+    int tty = 0;
+    
+    opterr = 0;
+    while ((c = getopt_long(argc, argv, "+t", exec_longopts, NULL)) != -1) {
+        int opt_fileno;
+
+        switch (c) {
+        case 't':
+            tty = 1;
+            break;
+        default:
+            exec_usage(1);
+        }
+    }
+
+    int i;
+    int ac;
+
+    char **av;
+    av = argv + optind;
+    ac = argc - optind;
+
     int writefd, readfd, errfd;
     pid_t pid;
     if (tty) {

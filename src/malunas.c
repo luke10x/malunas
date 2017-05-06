@@ -22,7 +22,7 @@ static struct option const longopts[] = {
 
 typedef struct {
     char *name;
-    void (*handle_func) (int, int, int, char **, int, int);
+    void (*handle_func) (int, int, int, char **, int);
 } t_modulecfg;
 
 t_modulecfg modules[] = {
@@ -103,7 +103,7 @@ int main(int argc, char *argv[])
     tty = 0;
     verbose = 0;
     workers = 2;
-    while ((c = getopt_long(argc, argv, "+tw:v", longopts, NULL)) != -1) {
+    while ((c = getopt_long(argc, argv, "+w:v", longopts, NULL)) != -1) {
         int opt_fileno;
 
         switch (c) {
@@ -142,8 +142,6 @@ int main(int argc, char *argv[])
     }
 
     char *handler = av[0];
-    av++;
-    ac--;
 
     t_modulecfg *module = &modules[0];
     int len = sizeof(modules) / sizeof(modules[0]);
@@ -246,7 +244,7 @@ int main(int argc, char *argv[])
                         "accepted connection from %s (socket FD: %d)",
                         s, conn_fd);
 
-                module->handle_func(conn_fd, log, ac, av, tty, verbose);
+                module->handle_func(conn_fd, log, ac, av, verbose);
 
                 close(conn_fd);
             } while (1);
