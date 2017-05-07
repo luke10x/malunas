@@ -166,9 +166,8 @@ void mlns_exec_handle(int conn_fd, int logfd, int argc,
     int tty = 0;
     
     opterr = 0;
+    optind = 1;
     while ((c = getopt_long(argc, argv, "+t", exec_longopts, NULL)) != -1) {
-        int opt_fileno;
-
         switch (c) {
         case 't':
             tty = 1;
