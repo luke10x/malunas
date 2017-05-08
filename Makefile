@@ -23,6 +23,10 @@ build/malunas.static: $(objects)
 	echo $<
 	$(CC) $(CFLAGS) -static $^ -o $@
 
+lib-src:
+	mkdir lib-src
+	cd lib-src && apt-get source glibc
+
 build/malunas.alpine:
 	@mkdir -p ./build
 	docker build -t malunas-build -f docker/Dockerfile.alpine.build .
