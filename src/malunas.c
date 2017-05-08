@@ -14,7 +14,6 @@
 #define program_name "malunas"
 
 static struct option const longopts[] = {
-    {"tty", no_argument, NULL, 't'},
     {"workers", required_argument, NULL, 'w'},
     {"verbose", no_argument, NULL, 'v'},
     {NULL, 0, NULL, 0}
