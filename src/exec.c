@@ -159,12 +159,11 @@ HELLO\n\
     exit(1);
 }
 
-void mlns_exec_handle(int conn_fd, int logfd, int argc,
-                      char *argv[], int verbose)
+void mlns_exec_handle(int conn_fd, int logfd, int argc, char *argv[])
 {
     int c;
     int tty = 0;
-    
+
     opterr = 0;
     optind = 1;
     while ((c = getopt_long(argc, argv, "+t", exec_longopts, NULL)) != -1) {
@@ -229,12 +228,9 @@ void mlns_exec_handle(int conn_fd, int logfd, int argc,
 
                     write(writefd, buf, n);
 
-                    if (verbose) {
-                        trim_log(buf, n);
-                        dprintf(logfd, "received %d bytes: %s", n, buf);
-                    } else {
-                        dprintf(logfd, "received %d.", n);
-                    }
+                    trim_log(buf, n);
+                    dprintf(logfd, "received %d bytes: %s", n, buf);
+
                     continue;
                 }
             }
@@ -246,12 +242,9 @@ void mlns_exec_handle(int conn_fd, int logfd, int argc,
 
                     send(conn_fd, buf, n, 0);
 
-                    if (verbose) {
-                        trim_log(buf, n);
-                        dprintf(logfd, "sent %d bytes: %s", n, buf);
-                    } else {
-                        dprintf(logfd, "sent %d.", n);
-                    }
+                    trim_log(buf, n);
+                    dprintf(logfd, "sent %d bytes: %s", n, buf);
+
                     continue;
                 }
             }

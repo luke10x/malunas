@@ -15,13 +15,12 @@
 
 static struct option const longopts[] = {
     {"workers", required_argument, NULL, 'w'},
-    {"verbose", no_argument, NULL, 'v'},
     {NULL, 0, NULL, 0}
 };
 
 typedef struct {
     char *name;
-    void (*handle_func) (int, int, int, char **, int);
+    void (*handle_func) (int, int, int, char **);
 } t_modulecfg;
 
 t_modulecfg modules[] = {
@@ -32,7 +31,7 @@ t_modulecfg modules[] = {
 void usage(int status)
 {
     printf
-        ("usage: %s [-v|--verbose] [-w|--workers] <port> [<handler> [<args>]]\n\n",
+        ("usage: %s [-w|--workers] <port> [<handler> [<args>]]\n\n",
          program_name);
 
     fputs("\
@@ -46,7 +45,6 @@ supported handlers.\n\
 OPTIONS:\n\
 Mandatory arguments to long options are mandatory for short options too.\n\
   -w, --workers=NUMBER adjust number of preforked workers that accept connections\n\
-  -v, --verbose        print more output\n\
 \n", stdout);
 
 
@@ -97,20 +95,15 @@ int main(int argc, char *argv[])
     int c;
     int workers;
     int tty;
-    int verbose;
 
     tty = 0;
-    verbose = 0;
     workers = 2;
-    while ((c = getopt_long(argc, argv, "+w:v", longopts, NULL)) != -1) {
+    while ((c = getopt_long(argc, argv, "+w:", longopts, NULL)) != -1) {
         int opt_fileno;
 
         switch (c) {
         case 't':
             tty = 1;
-            break;
-        case 'v':
-            verbose = 1;
             break;
         case 'w':
             workers = atoi(optarg);
@@ -243,7 +236,7 @@ int main(int argc, char *argv[])
                         "accepted connection from %s (socket FD: %d)",
                         s, conn_fd);
 
-                module->handle_func(conn_fd, log, ac, av, verbose);
+                module->handle_func(conn_fd, log, ac, av);
 
                 close(conn_fd);
             } while (1);

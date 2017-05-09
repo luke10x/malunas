@@ -2,8 +2,7 @@
 
 #define exec_h__
 
-void mlns_exec_handle(int conn_fd, int logfd, int ac, char *av[],
-                 int verbose);
+void mlns_exec_handle(int conn_fd, int logfd, int ac, char *av[]);
 
 #endif
 
