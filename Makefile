@@ -32,15 +32,25 @@ build/malunas.alpine:
 	docker build -t malunas-build -f docker/Dockerfile.alpine.build .
 	docker run malunas-build tar -c malunas.alpine | tar -x -C build
 
-behave: malunas
+behave: malunas webserver.txt
 	behave
 
-.PHONY: clean indent docker-alpine-build behave hotswap
+.PHONY: clean indent docker-alpine-build behave hotswap docker-web-stop
 
 docker-alpine-build: build/malunas.alpine
 	docker build -t malunas:alpine -f docker/Dockerfile.alpine .
+
+webserver.txt:
+	docker build -t malunas-webserver docker/httpd
+	docker run --name webserver -d -p80 malunas-webserver
+	docker port webserver 80/tcp | tee webserver.txt
+
+docker-web-stop:
+	docker stop webserver
+	docker rm webserver
+	rm webserver.txt
 	
-clean:
+clean: docker-web-stop
 	@rm -rf obj/
 	@rm -rf build/
 	@rm -f malunas 
