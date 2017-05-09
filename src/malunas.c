@@ -99,12 +99,7 @@ int main(int argc, char *argv[])
     tty = 0;
     workers = 2;
     while ((c = getopt_long(argc, argv, "+w:", longopts, NULL)) != -1) {
-        int opt_fileno;
-
         switch (c) {
-        case 't':
-            tty = 1;
-            break;
         case 'w':
             workers = atoi(optarg);
             break;
