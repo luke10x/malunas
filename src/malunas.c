@@ -132,13 +132,15 @@ int main(int argc, char *argv[])
 
     t_modulecfg *module = &modules[0];
     int len = sizeof(modules) / sizeof(modules[0]);
-    do {
+
+    while (strcmp(handler, module->name) != 0) {
         // is it last module?
         if (module == &modules[len - 1]) {
             fprintf(stderr, "Module '%s' is not a valid module\n", handler);
             exit(1);
         }
-    } while ((strcmp(handler, (module++)->name)) != 0);
+        module++;
+    }
 
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;
