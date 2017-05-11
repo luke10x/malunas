@@ -3,7 +3,7 @@ CFLAGS=-std=c99
 
 vpath %.c ./src
 
-src = malunas.c exec.c
+src = malunas.c exec.c proxy.c
 objects = $(patsubst %.c,obj/%.o,$(src))
 
 $(objects): | obj
@@ -32,7 +32,7 @@ build/malunas.alpine:
 	docker build -t malunas-build -f docker/Dockerfile.alpine.build .
 	docker run malunas-build tar -c malunas.alpine | tar -x -C build
 
-behave: malunas webserver.txt
+behave: malunas 
 	behave
 
 .PHONY: clean indent docker-alpine-build behave hotswap docker-web-stop
@@ -40,15 +40,13 @@ behave: malunas webserver.txt
 docker-alpine-build: build/malunas.alpine
 	docker build -t malunas:alpine -f docker/Dockerfile.alpine .
 
-webserver.txt:
+docker-web-start: docker-web-stop
 	docker build -t malunas-webserver docker/httpd
-	docker run --name webserver -d -p80 malunas-webserver
-	docker port webserver 80/tcp | tee webserver.txt
+	docker run --name webserver -d -p10080:80 malunas-webserver
 
 docker-web-stop:
 	docker stop webserver
 	docker rm webserver
-	rm webserver.txt
 	
 clean: docker-web-stop
 	@rm -rf obj/

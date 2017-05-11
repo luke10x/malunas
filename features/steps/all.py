@@ -9,7 +9,7 @@ import random
 import select
 import shlex
 
-TIMEOUT = 5.0
+TIMEOUT = 10.0
 
 @given(u'server started with \'{cmd}\'')
 def step_impl(context, cmd):
@@ -111,3 +111,19 @@ def step_impl(context):
     context.second_client.settimeout(TIMEOUT)
     line = context.second_client.recv(10)
     assert("hello" == line.strip()), "Message not received by client, but received: '%s'" % line
+
+@when(u'client sends \'{msg}\'')
+def step_impl(context, msg):
+    context.client.send(msg.decode('unicode-escape'))
+
+@then(u'client receives \'{msg}\'')
+def step_impl(context, msg):
+    context.client.settimeout(TIMEOUT)
+    resp = ''
+    while True:
+        part = context.client.recv(100)
+        if not part:
+            break
+        resp = resp + part
+    found  = re.search(msg, resp) is not None
+    assert(found), "Response does not match '%s'" % msg

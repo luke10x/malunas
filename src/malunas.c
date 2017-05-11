@@ -10,6 +10,7 @@
 #include <poll.h>
 
 #include "exec.h"
+#include "proxy.h"
 
 #define program_name "malunas"
 
@@ -25,7 +26,7 @@ typedef struct {
 
 t_modulecfg modules[] = {
     {"exec", mlns_exec_handle},
-    {"proxy", mlns_exec_handle}
+    {"proxy", mlns_proxy_handle}
 };
 
 void usage(int status)
@@ -264,7 +265,7 @@ int main(int argc, char *argv[])
                     char buf[0x100 + 1] = { 0 };
                     n = read(poll_fds[i].fd, buf, 0x100);
                     buf[n] = 0;
-                    dprintf(1, "%s >>> %s\n", worker_names[i], buf);
+                    dprintf(2, "%s >>> %s\n", worker_names[i], buf);
                 }
             }
         }
