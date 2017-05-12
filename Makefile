@@ -32,7 +32,7 @@ build/malunas.alpine:
 	docker build -t malunas-build -f docker/Dockerfile.alpine.build .
 	docker run malunas-build tar -c malunas.alpine | tar -x -C build
 
-behave: malunas 
+behave: malunas docker-web-start
 	behave
 
 .PHONY: clean indent docker-alpine-build behave hotswap docker-web-stop
