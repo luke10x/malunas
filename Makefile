@@ -3,8 +3,10 @@ CFLAGS=-std=c99
 
 vpath %.c ./src
 
-src = malunas.c exec.c proxy.c
+src = malunas.c exec.c proxy.c addrparse.c
+tests = addrparse_test.c
 objects = $(patsubst %.c,obj/%.o,$(src))
+test_objects = $(patsubst %.c,obj/%.o,$(src))
 
 $(objects): | obj
 
@@ -23,6 +25,10 @@ build/malunas.static: $(objects)
 	echo $<
 	$(CC) $(CFLAGS) -static $^ -o $@
 
+addrparse_test: obj/addrparse.o obj/addrparse_test.o
+	echo $<
+	$(CC) $(CFLAGS) $^ -o $@
+
 lib-src:
 	mkdir lib-src
 	cd lib-src && apt-get source glibc
@@ -40,7 +46,7 @@ behave: malunas docker-web-start
 docker-alpine-build: build/malunas.alpine
 	docker build -t malunas:alpine -f docker/Dockerfile.alpine .
 
-docker-web-start: docker-web-stop
+docker-web-start:
 	docker build -t malunas-webserver docker/httpd
 	docker run --name webserver -d -p10080:80 malunas-webserver
 
