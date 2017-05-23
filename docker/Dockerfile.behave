@@ -1,0 +1,14 @@
+# vim: syntax=dockerfile
+FROM malunas:alpine
+
+RUN apk add --update \
+    python \
+    py-pip \
+  && pip install behave \
+  && rm -rf /var/cache/apk/*
+
+ADD ./features /features
+ADD ./scripts/program.py ./scripts/program.py
+
+ENTRYPOINT ["/malunas"]
+CMD ["23", "exec", "behave"]

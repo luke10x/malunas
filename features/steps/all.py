@@ -9,7 +9,7 @@ import random
 import select
 import shlex
 
-TIMEOUT = 10.0
+TIMEOUT = 20.0
 
 @given(u'server started with \'{cmd}\'')
 def step_impl(context, cmd):
@@ -126,4 +126,4 @@ def step_impl(context, msg):
             break
         resp = resp + part
     found  = re.search(msg, resp) is not None
-    assert(found), "Response does not match '%s'" % msg
+    assert(found), "Response does not match '%s', in '%s'" % (msg, resp)
