@@ -54,7 +54,7 @@ docker-web-stop:
 	docker stop webserver
 	docker rm webserver
 	
-clean: docker-web-stop
+clean:
 	@rm -rf obj/
 	@rm -rf build/
 	@rm -f malunas 

@@ -12,6 +12,7 @@
 #include <sys/wait.h>
 #include <getopt.h>
 #include <netdb.h>
+#include <ctype.h>
 
 int mlns_addrparse(struct addrinfo **res, char *str)
 {
@@ -21,9 +22,22 @@ int mlns_addrparse(struct addrinfo **res, char *str)
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
 
-    int rc = getaddrinfo("0.0.0.0", str, NULL, res);
+    int n;
+
+    for (n = (int) strlen(str) - 1; isdigit(str[n]) && n > 0; n--);
+
+    char *host_part;
+    if (n != 0) {
+        host_part = strncpy(malloc(n * sizeof(char)), str, n);
+        host_part[n] = 0;
+        n++;
+    } else {
+        host_part = "0.0.0.0";
+    }
+
+    int rc = getaddrinfo(host_part, str + n, NULL, res);
     if (rc != 0) {
-        fprintf(stderr, "getaddrinfo for port %s: %s\n", str, gai_strerror(rc));
+        fprintf(stderr, "getaddrinfo for %s: %s\n", str, gai_strerror(rc));
     }
     return 1;
 }

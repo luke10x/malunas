@@ -22,16 +22,48 @@ struct addrinfo **create_addr()
     return addr;
 }
 
-int main(int argc, char **argv)
+int test_with_simple_port_number()
 {
+    printf("\nTest with simple port number:\n");
     struct addrinfo **addr = create_addr();
     mlns_addrparse(addr, "80");
 
     printf("mlns_addrparse(addr, \"80\");\n");
     struct sockaddr *sa = (*addr)->ai_addr;
 
-    printf("nu ir ka %p\n", sa);
     printf("port == %hu \n",
            htons(((struct sockaddr_in *) (*addr)->ai_addr)->sin_port));
     assert(80 == htons(((struct sockaddr_in *) (*addr)->ai_addr)->sin_port));
+    printf("address == %s \n",
+           inet_ntoa(((struct sockaddr_in *) (*addr)->ai_addr)->sin_addr));
+    assert(0 == strcmp
+           ("0.0.0.0",
+            inet_ntoa(((struct sockaddr_in *) (*addr)->ai_addr)->sin_addr))
+        );
+}
+
+int test_with_hostname_and_port()
+{
+    printf("\nTest with hostname and port:\n");
+    struct addrinfo **addr = create_addr();
+    mlns_addrparse(addr, "localhost:8080");
+
+    printf("mlns_addrparse(addr, \"localhost:8080\");\n");
+    struct sockaddr *sa = (*addr)->ai_addr;
+
+    printf("port == %hu \n",
+           htons(((struct sockaddr_in *) (*addr)->ai_addr)->sin_port));
+    assert(8080 == htons(((struct sockaddr_in *) (*addr)->ai_addr)->sin_port));
+    printf("address == %s \n",
+           inet_ntoa(((struct sockaddr_in *) (*addr)->ai_addr)->sin_addr));
+    assert(0 == strcmp
+           ("127.0.0.1",
+            inet_ntoa(((struct sockaddr_in *) (*addr)->ai_addr)->sin_addr))
+        );
+}
+
+int main(int argc, char **argv)
+{
+    test_with_simple_port_number();
+    test_with_hostname_and_port();
 }
