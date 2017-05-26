@@ -12,6 +12,7 @@ Feature: request handling program can be run in a TTY
      When program writes 'hello'
      Then client receives 'hello' 
 
+  @skip-in-docker
   Scenario: Without TTY client does not see any response if program does not flush
 
     Given server started with '--workers=1 0 exec python scripts/program.py' 

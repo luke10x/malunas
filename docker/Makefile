@@ -18,17 +18,10 @@ web-img:
 	docker build -t malunas-webserver ./httpd
 	docker tag malunas-webserver malunas-webserver:latest
 
-#web-start:
-	#docker build -t malunas-webserver ./httpd
-	#docker run --name webserver -d -p10080:80 malunas-webserver
-
-#web-stop:
-	#docker stop webserver
-	#docker rm webserver
-
 behave: behave-img web-img
 	docker-compose up -d
-	docker exec -t behave behave
-	docker-compose down -d
-	
+	docker exec -t behave behave --tags=-skip-in-docker
+	docker-compose down
+
 clean:
+	rm ./build -fr

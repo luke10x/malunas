@@ -43,16 +43,16 @@ void mlns_proxy_handle(int server_fd, int logfd, int argc, char *argv[])
 
     struct addrinfo **target_addr;
     target_addr = malloc(sizeof(target_addr));
-    int rc = mlns_addrparse(target_addr, "10080");
+    int rc = mlns_addrparse(target_addr, argv[1]);
     if (!rc) {
-        printf("\n inet_pton error occured\n");
+        printf("\n mlns_addrparse error occured\n");
         return;
     }
 
     rc = connect(client_fd, (struct sockaddr *) ((*target_addr)->ai_addr),
                  (*target_addr)->ai_addrlen);
     if (rc < 0) {
-        printf("\n Error : Connect Failed \n");
+        printf("Error : Connect to '%s' failed \n", argv[1]);
 
         struct sockaddr *res = (struct sockaddr *) ((*target_addr)->ai_addr);
         char *s = NULL;

@@ -9,7 +9,7 @@ import random
 import select
 import shlex
 
-TIMEOUT = 20.0
+TIMEOUT = 10.0
 
 @given(u'server started with \'{cmd}\'')
 def step_impl(context, cmd):

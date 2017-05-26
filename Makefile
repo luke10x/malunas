@@ -33,27 +33,8 @@ lib-src:
 	mkdir lib-src
 	cd lib-src && apt-get source glibc
 
-build/malunas.alpine:
-	@mkdir -p ./build
-	docker build -t malunas-build -f docker/Dockerfile.alpine.build .
-	docker run malunas-build tar -c malunas.alpine | tar -x -C build
+.PHONY: clean indent hotswap
 
-behave: malunas docker-web-start
-	behave
-
-.PHONY: clean indent docker-alpine-build behave hotswap docker-web-stop
-
-docker-alpine-build: build/malunas.alpine
-	docker build -t malunas:alpine -f docker/Dockerfile.alpine .
-
-docker-web-start:
-	docker build -t malunas-webserver docker/httpd
-	docker run --name webserver -d -p10080:80 malunas-webserver
-
-docker-web-stop:
-	docker stop webserver
-	docker rm webserver
-	
 clean:
 	@rm -rf obj/
 	@rm -rf build/
