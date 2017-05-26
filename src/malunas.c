@@ -197,24 +197,24 @@ int main(int argc, char *argv[])
     fprintf(stderr, "%s: Listening on %s:%d\n",
             program_name, s, ntohs(*get_in_port(sa1)));
 
-    int logs[workers][2];
+    int logs_in[workers][2];
     char *worker_names[workers];
 
-    struct pollfd poll_fds[workers];
+    struct pollfd poll_fds_in[workers];
 
     for (i = 0; i < workers; i++) {
         pid_t pid;
-        pipe(logs[i]);
+        pipe(logs_in[i]);
 
-        poll_fds[i].fd = logs[i][0];
-        poll_fds[i].events = POLLIN;
+        poll_fds_in[i].fd = logs_in[i][0];
+        poll_fds_in[i].events = POLLIN;
 
         if ((pid = fork()) == -1) {
             exit(1);
         } else if (pid == 0) {
 
-            close(logs[i][0]);
-            int log = logs[i][1];
+            close(logs_in[i][0]);
+            int log = logs_in[i][1];
 
             // Accept loop
             do {
@@ -240,7 +240,7 @@ int main(int argc, char *argv[])
             } while (1);
         }
 
-        close(logs[i][1]);
+        close(logs_in[i][1]);
 
         char *worker_name = malloc(10);
         sprintf(worker_name, "PID:%d", pid);
@@ -249,7 +249,7 @@ int main(int argc, char *argv[])
     }
 
     do {
-        int ret = poll((struct pollfd *) &poll_fds, workers, 1000);
+        int ret = poll((struct pollfd *) &poll_fds_in, workers, 1000);
         if (ret == -1) {
             perror("poll");
             break;
@@ -258,12 +258,12 @@ int main(int argc, char *argv[])
         } else {
 
             for (i = 0; i < workers; i++) {
-                if (poll_fds[i].revents & POLLIN) {
-                    poll_fds[i].revents -= POLLIN;
+                if (poll_fds_in[i].revents & POLLIN) {
+                    poll_fds_in[i].revents -= POLLIN;
 
                     int n;
                     char buf[0x100 + 1] = { 0 };
-                    n = read(poll_fds[i].fd, buf, 0x100);
+                    n = read(poll_fds_in[i].fd, buf, 0x100);
                     buf[n] = 0;
                     dprintf(2, "%s >>> %s\n", worker_names[i], buf);
                 }
