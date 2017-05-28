@@ -220,7 +220,7 @@ int main(int argc, char *argv[])
     }
 
     for (i = 0; i < workers; i++) {
-        
+
         pid_t pid;
         pipe(logs_in[i]);
 
@@ -245,11 +245,13 @@ int main(int argc, char *argv[])
                 evt.mtype = 1;
                 evt.etype = EVT_WORKER_READY;
                 evt.edata.worker_ready.worker_id = i;
-                size_t evt_size = sizeof evt.mtype + sizeof evt.etype + sizeof evt.edata.worker_ready;
-                if(msgsnd(msqid, &evt, evt_size, 0) == -1) {
+                size_t evt_size =
+                    sizeof evt.mtype + sizeof evt.etype +
+                    sizeof evt.edata.worker_ready;
+                if (msgsnd(msqid, &evt, evt_size, 0) == -1) {
                     perror("msgsnd");
                 }
-                
+
                 conn_fd =
                     accept(sockfd, (struct sockaddr *) &their_addr, &addr_size);
 
@@ -264,10 +266,13 @@ int main(int argc, char *argv[])
                 evt.mtype = 1;
                 evt.etype = EVT_CONN_ACCEPTED;
                 evt.edata.conn_accepted.worker_id = i;
-                evt.edata.conn_accepted.sockaddr = *(struct sockaddr *)&their_addr ;
+                evt.edata.conn_accepted.sockaddr =
+                    *(struct sockaddr *) &their_addr;
                 evt.edata.conn_accepted.fd = conn_fd;
-                evt_size = sizeof evt.mtype + sizeof evt.etype + sizeof evt.edata.conn_accepted;
-                if(msgsnd(msqid, &evt, evt_size, 0) == -1) {
+                evt_size =
+                    sizeof evt.mtype + sizeof evt.etype +
+                    sizeof evt.edata.conn_accepted;
+                if (msgsnd(msqid, &evt, evt_size, 0) == -1) {
                     perror("msgsnd");
                 }
 
@@ -290,7 +295,6 @@ int main(int argc, char *argv[])
         perror("msgget");
         exit(1);
     }
-    printf("msqid = %d", (int)msqid);
 
     int msgsize;
     for (;;) {
@@ -301,24 +305,24 @@ int main(int argc, char *argv[])
         }
 
         switch (msg.etype) {
-            case EVT_WORKER_READY:
-                dprintf(2, "[?] %s - WORKER READY\n", worker_names[msg.edata.worker_ready.worker_id]);
-                break;
-            case EVT_CONN_ACCEPTED:
-                1;
-                struct sockaddr client_addr;
-                client_addr = msg.edata.conn_accepted.sockaddr; 
-                inet_ntop(client_addr.sa_family, get_in_addr(&client_addr), s, sizeof s);
-                dprintf(2,
-                        "[?] %s - CONNECTION FROM %s:%d (FD: %d)\n",
-                        worker_names[msg.edata.conn_accepted.worker_id],
-                        s,
-                        ntohs(*get_in_port(&client_addr)),
-                        msg.edata.conn_accepted.fd);
-                break;
+        case EVT_WORKER_READY:
+            dprintf(2, "[?] %s - WORKER READY\n",
+                    worker_names[msg.edata.worker_ready.worker_id]);
+            break;
+        case EVT_CONN_ACCEPTED:
+            1;
+            struct sockaddr client_addr;
+            client_addr = msg.edata.conn_accepted.sockaddr;
+            inet_ntop(client_addr.sa_family, get_in_addr(&client_addr), s,
+                      sizeof s);
+            dprintf(2, "[?] %s - CONNECTION FROM %s:%d (FD: %d)\n",
+                    worker_names[msg.edata.conn_accepted.worker_id], s,
+                    ntohs(*get_in_port(&client_addr)),
+                    msg.edata.conn_accepted.fd);
+            break;
 
-            default:
-                printf("Unknown event!!!\n");
+        default:
+            printf("Unknown event!!!\n");
         }
     }
 
