@@ -8,9 +8,12 @@
 #include <sys/wait.h>
 #include <getopt.h>
 #include <poll.h>
+#include <sys/ipc.h>
+#include <sys/msg.h>
 
 #include "exec.h"
 #include "proxy.h"
+#include "event.h"
 
 #define program_name "malunas"
 
@@ -202,7 +205,22 @@ int main(int argc, char *argv[])
 
     struct pollfd poll_fds_in[workers];
 
+    /* IPC */
+    int msqid;
+    key_t key;
+
+    if ((key = ftok("malunas", 'a')) == -1) {
+        perror("ftok");
+        exit(1);
+    }
+
+    if ((msqid = msgget(key, 0664 | IPC_CREAT)) == -1) {
+        perror("msgget");
+        exit(1);
+    }
+
     for (i = 0; i < workers; i++) {
+        
         pid_t pid;
         pipe(logs_in[i]);
 
@@ -223,6 +241,15 @@ int main(int argc, char *argv[])
 
                 dprintf(log, "waiting for a connection...");
 
+                struct evt_base evt;
+                evt.mtype = 1;
+                evt.etype = EVT_WORKER_READY;
+                evt.edata.worker_ready.worker_id = i;
+                size_t evt_size = sizeof evt.mtype + sizeof evt.etype + sizeof evt.edata.worker_ready;
+                if(msgsnd(msqid, &evt, evt_size, 0) == -1) {
+                    perror("msgsnd");
+                }
+                
                 conn_fd =
                     accept(sockfd, (struct sockaddr *) &their_addr, &addr_size);
 
@@ -233,6 +260,16 @@ int main(int argc, char *argv[])
                 dprintf(log,
                         "accepted connection from %s (socket FD: %d)",
                         s, conn_fd);
+
+                evt.mtype = 1;
+                evt.etype = EVT_CONN_ACCEPTED;
+                evt.edata.conn_accepted.worker_id = i;
+                evt.edata.conn_accepted.sockaddr = *(struct sockaddr *)&their_addr ;
+                evt.edata.conn_accepted.fd = conn_fd;
+                evt_size = sizeof evt.mtype + sizeof evt.etype + sizeof evt.edata.conn_accepted;
+                if(msgsnd(msqid, &evt, evt_size, 0) == -1) {
+                    perror("msgsnd");
+                }
 
                 module->handle_func(conn_fd, log, ac, av);
 
@@ -246,6 +283,43 @@ int main(int argc, char *argv[])
         sprintf(worker_name, "PID:%d", pid);
         worker_names[i] = worker_name;
         worker_names[i][9] = 0;
+    }
+
+    printf("msqid = %d", msqid);
+    if ((msqid = msgget(key, 0644)) == -1) {
+        perror("msgget");
+        exit(1);
+    }
+    printf("msqid = %d", (int)msqid);
+
+    int msgsize;
+    for (;;) {
+        struct evt_base msg;
+        if ((msgsize = msgrcv(msqid, &msg, 40, 0, 0)) == -1) {
+            perror("msgrcv");
+            exit(1);
+        }
+
+        switch (msg.etype) {
+            case EVT_WORKER_READY:
+                dprintf(2, "[?] %s - WORKER READY\n", worker_names[msg.edata.worker_ready.worker_id]);
+                break;
+            case EVT_CONN_ACCEPTED:
+                1;
+                struct sockaddr client_addr;
+                client_addr = msg.edata.conn_accepted.sockaddr; 
+                inet_ntop(client_addr.sa_family, get_in_addr(&client_addr), s, sizeof s);
+                dprintf(2,
+                        "[?] %s - CONNECTION FROM %s:%d (FD: %d)\n",
+                        worker_names[msg.edata.conn_accepted.worker_id],
+                        s,
+                        ntohs(*get_in_port(&client_addr)),
+                        msg.edata.conn_accepted.fd);
+                break;
+
+            default:
+                printf("Unknown event!!!\n");
+        }
     }
 
     do {
