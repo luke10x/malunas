@@ -276,7 +276,7 @@ int main(int argc, char *argv[])
                     perror("msgsnd");
                 }
 
-                module->handle_func(conn_fd, log, ac, av);
+                module->handle_func(conn_fd, msqid, ac, av);
 
                 close(conn_fd);
             } while (1);
@@ -350,4 +350,89 @@ int main(int argc, char *argv[])
     } while (1);
 
     while (wait(NULL) > 0);
+}
+
+void trim_log(char *buf, int n)
+{
+    int loglen;
+    if (n <= 80) {
+        loglen = n;
+    } else {
+        loglen = 80;
+    }
+    for (int i = 0; i < loglen; i++) {
+        if (buf[i] < 32) {
+            buf[i] = '.';
+        }
+    }
+    if (n > 80) {
+        buf[loglen - 1] = 133;
+    }
+    buf[loglen] = 0;
+}
+
+int pass_traffic(int front_read, int front_write, int back_read, int back_write)
+{
+    struct pollfd poll_fds[2];
+    struct pollfd *fr_pollfd = &poll_fds[0];
+    struct pollfd *br_pollfd = &poll_fds[1];
+
+    fr_pollfd->fd = front_read;
+    fr_pollfd->events = POLLIN;
+
+    br_pollfd->fd = back_read;
+    br_pollfd->events = POLLIN | POLLPRI;
+
+    do {
+        int ret = poll((struct pollfd *) &poll_fds, 2, 1000);
+
+        if (ret == -1) {
+            perror("poll");
+            break;
+        } else if (ret == 0) {
+            // Poll timeout
+        } else {
+
+            if (fr_pollfd->revents & POLLIN) {
+                fr_pollfd->revents -= POLLIN;
+                int n;
+                char buf[0x100] = { 0 };
+                int event_confirmed = 0;
+                if ((n = read(fr_pollfd->fd, buf, 0x100)) >= 0) {
+                    if (event_confirmed == 0 && n <= 0) {
+                        // It is a false event, perhaps client closed connection
+                        break;
+                    }
+                    event_confirmed = 1;    // because if there was data, we read it all
+
+                    write(back_write, buf, n);
+
+                    trim_log(buf, n);
+
+                    /*dprintf(logfd, "received %d bytes: %s", n, buf);*/
+
+                    continue;
+                }
+            }
+            if (br_pollfd->revents & POLLIN) {
+                br_pollfd->revents -= POLLIN;
+                int n;
+                char buf[0x10] = { 0 };
+                if ((n = read(br_pollfd->fd, buf, 0x100)) >= 0) {
+
+                    send(front_write, buf, n, 0);
+
+                    trim_log(buf, n);
+
+                    /*dprintf(logfd, "sent %d bytes: %s", n, buf);*/
+
+                    continue;
+                }
+            }
+
+            break;
+        }
+    } while (1);
+
+    /*dprintf(logfd, "finished processing request");*/
 }

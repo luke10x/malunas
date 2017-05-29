@@ -126,24 +126,6 @@ pid_t popen_tty(int ac, char *av[], int *fd)
     return pid;
 }
 
-void trim_log(char *buf, int n)
-{
-    int loglen;
-    if (n <= 80) {
-        loglen = n;
-    } else {
-        loglen = 80;
-    }
-    for (int i = 0; i < loglen; i++) {
-        if (buf[i] < 32) {
-            buf[i] = '.';
-        }
-    }
-    if (n > 80) {
-        buf[loglen - 1] = 133;
-    }
-    buf[loglen] = 0;
-}
 
 static struct option const exec_longopts[] = {
     {"tty", no_argument, NULL, 't'},
@@ -158,6 +140,8 @@ HELLO\n\
 \n", stdout);
     exit(1);
 }
+
+extern int pass_traffic(int front_read, int front_write, int back_read, int back_write);
 
 void mlns_exec_handle(int conn_fd, int logfd, int argc, char *argv[])
 {
@@ -194,66 +178,8 @@ void mlns_exec_handle(int conn_fd, int logfd, int argc, char *argv[])
                           (int *) &writefd, (int *) &readfd, (int *) &errfd);
     }
 
-    struct pollfd poll_fds[2];
-    struct pollfd *read_pollfd = &poll_fds[0];
-    struct pollfd *conn_pollfd = &poll_fds[1];
-
-    read_pollfd->fd = readfd;
-    read_pollfd->events = POLLIN;
-
-    conn_pollfd->fd = conn_fd;
-    conn_pollfd->events = POLLIN | POLLPRI;
-
-    do {
-        int ret = poll((struct pollfd *) &poll_fds, 2, 1000);
-
-        if (ret == -1) {
-            perror("poll");
-            break;
-        } else if (ret == 0) {
-            // Poll timeout
-        } else {
-
-            if (conn_pollfd->revents & POLLIN) {
-                conn_pollfd->revents -= POLLIN;
-                int n;
-                char buf[0x100] = { 0 };
-                int event_confirmed = 0;
-                if ((n = read(conn_pollfd->fd, buf, 0x100)) >= 0) {
-                    if (event_confirmed == 0 && n <= 0) {
-                        // It is a false event, perhaps client closed connection
-                        break;
-                    }
-                    event_confirmed = 1;    // because if there was data, we read it all
-
-                    write(writefd, buf, n);
-
-                    trim_log(buf, n);
-                    dprintf(logfd, "received %d bytes: %s", n, buf);
-
-                    continue;
-                }
-            }
-            if (read_pollfd->revents & POLLIN) {
-                read_pollfd->revents -= POLLIN;
-                int n;
-                char buf[0x10] = { 0 };
-                if ((n = read(read_pollfd->fd, buf, 0x100)) >= 0) {
-
-                    send(conn_fd, buf, n, 0);
-
-                    trim_log(buf, n);
-                    dprintf(logfd, "sent %d bytes: %s", n, buf);
-
-                    continue;
-                }
-            }
-
-            break;
-        }
-    } while (1);
+    /* Read-end of backend is a write-end of the process */
+    pass_traffic(conn_fd, conn_fd, writefd, readfd);
 
     kill(pid, SIGKILL);
-
-    dprintf(logfd, "finished processing request");
 }
