@@ -371,6 +371,10 @@ void trim_log(char *buf, int n)
     buf[loglen] = 0;
 }
 
+/**
+ * Poll event constants are defined here:
+ * include/uapi/asm-generic/poll.h
+ */
 int pass_traffic(int front_read, int front_write, int back_read, int back_write)
 {
     struct pollfd poll_fds[2];
@@ -381,58 +385,46 @@ int pass_traffic(int front_read, int front_write, int back_read, int back_write)
     fr_pollfd->events = POLLIN;
 
     br_pollfd->fd = back_read;
-    br_pollfd->events = POLLIN | POLLPRI;
+    br_pollfd->events = POLLIN;
 
     do {
-        int ret = poll((struct pollfd *) &poll_fds, 2, 1000);
-
+        int ret = poll((struct pollfd *) &poll_fds, 2, 4000);
         if (ret == -1) {
             perror("poll");
             break;
         } else if (ret == 0) {
-            // Poll timeout
+            /*Poll timeout */
         } else {
-
-            if (fr_pollfd->revents & POLLIN) {
-                fr_pollfd->revents -= POLLIN;
-                int n;
-                char buf[0x100] = { 0 };
-                int event_confirmed = 0;
-                if ((n = read(fr_pollfd->fd, buf, 0x100)) >= 0) {
-                    if (event_confirmed == 0 && n <= 0) {
-                        // It is a false event, perhaps client closed connection
-                        break;
-                    }
-                    event_confirmed = 1;    // because if there was data, we read it all
-
-                    write(back_write, buf, n);
-
-                    trim_log(buf, n);
-
-                    /*dprintf(logfd, "received %d bytes: %s", n, buf);*/
-
-                    continue;
-                }
-            }
             if (br_pollfd->revents & POLLIN) {
-                br_pollfd->revents -= POLLIN;
-                int n;
-                char buf[0x10] = { 0 };
-                if ((n = read(br_pollfd->fd, buf, 0x100)) >= 0) {
+                char buf[0x10+1] = { 0 };
+                int n = read(br_pollfd->fd, buf, 0x10);
 
+                if (n > 0) {
+                    buf[n] = 0;
                     send(front_write, buf, n, 0);
 
-                    trim_log(buf, n);
-
-                    /*dprintf(logfd, "sent %d bytes: %s", n, buf);*/
-
-                    continue;
-                }
+                    /*dprintf(2, "received %d bytes: %s\n", n, buf);*/
+                } else break;
             }
 
-            break;
+            if (fr_pollfd->revents & POLLIN) {
+                char buf[0x10+1] = { 0 };
+                int n = read(fr_pollfd->fd, buf, 0x10);
+
+                if (n > 0) {
+                    buf[n] = 0;
+                    write(back_write, buf, n);
+
+                    /*dprintf(2, "sent %d bytes: %s\n", n, buf);*/
+                } else break;
+            }
+
+            if (br_pollfd->revents & POLLHUP) {
+                break;
+            }
+            if (fr_pollfd->revents & POLLHUP) {
+                break;
+            }
         }
     } while (1);
-
-    /*dprintf(logfd, "finished processing request");*/
 }

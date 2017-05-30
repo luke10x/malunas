@@ -32,6 +32,8 @@ HELLO\n\
     exit(1);
 }
 
+extern int pass_traffic(int front_read, int front_write, int back_read, int back_write);
+
 void mlns_proxy_handle(int server_fd, int logfd, int argc, char *argv[])
 {
 
@@ -79,66 +81,9 @@ void mlns_proxy_handle(int server_fd, int logfd, int argc, char *argv[])
         return;
     }
 
-    struct pollfd poll_fds[2];
-    struct pollfd *server_pollfd = &poll_fds[0];
-    struct pollfd *client_pollfd = &poll_fds[1];
+    /* Read-end of backend is a write-end of the process */
+    pass_traffic(server_fd, server_fd, client_fd, client_fd);
 
-    server_pollfd->fd = server_fd;
-    server_pollfd->events = POLLIN;
-
-    client_pollfd->fd = client_fd;
-    client_pollfd->events = POLLIN;
-
-    do {
-        int ret = poll((struct pollfd *) &poll_fds, 2, 1000);
-
-        if (ret == -1) {
-            perror("poll");
-            break;
-        } else if (ret == 0) {
-            /*Poll timeout */
-        } else {
-
-            if (client_pollfd->revents & POLLIN) {
-                /*client_pollfd->revents -= POLLIN; */
-
-                char buf[0x10] = { 0 };
-
-                int n = read(client_pollfd->fd, buf, 0x10);
-                if (n == 0) {
-                    break;
-                }
-
-                if (n > 0) {
-                    buf[0x10] = 0;
-                    write(server_fd, buf, n);
-
-                    dprintf(logfd, "received %d bytes: %s", n, buf);
-                }
-            }
-
-            if (server_pollfd->revents & POLLIN) {
-                /*server_pollfd->revents -= POLLIN; */
-
-                char buf[0x10] = { 0 };
-
-                int n = read(server_pollfd->fd, buf, 0x10);
-
-                if (n == 0) {
-                    break;
-                }
-
-                if (n > 0) {
-                    buf[0x10] = 0;
-                    send(client_fd, buf, n, 0);
-
-                    dprintf(logfd, "sent %d bytes: %s", n, buf);
-                }
-            }
-
-        }
-    } while (1);
-
-    close(client_pollfd->fd);
-    close(server_pollfd->fd);
+    close(client_fd);
+    close(server_fd);
 }

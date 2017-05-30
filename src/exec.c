@@ -181,5 +181,11 @@ void mlns_exec_handle(int conn_fd, int logfd, int argc, char *argv[])
     /* Read-end of backend is a write-end of the process */
     pass_traffic(conn_fd, conn_fd, writefd, readfd);
 
+    close(conn_fd);
+
+    close(writefd);
+    close(readfd);
+    close(errfd);
+
     kill(pid, SIGKILL);
 }
