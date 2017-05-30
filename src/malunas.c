@@ -85,6 +85,59 @@ in_port_t *get_in_port(struct sockaddr *sa)
     return &(((struct sockaddr_in6 *) sa)->sin6_port);
 }
 
+/**
+ * Accepts and hanles one request
+ */
+int handle_request(int log, int worker_id, int msqid, int listen_fd, t_modulecfg *module, int ac, char **av)
+{
+    struct sockaddr_storage their_addr;
+    socklen_t addr_size;
+    addr_size = sizeof their_addr;
+
+    dprintf(log, "waiting for a connection...");
+
+    struct evt_base evt;
+    evt.mtype = 1;
+    evt.etype = EVT_WORKER_READY;
+    evt.edata.worker_ready.worker_id = worker_id;
+    size_t evt_size =
+        sizeof evt.mtype + sizeof evt.etype +
+        sizeof evt.edata.worker_ready;
+    if (msgsnd(msqid, &evt, evt_size, 0) == -1) {
+        perror("msgsnd");
+    }
+
+    int conn_fd;
+    conn_fd =
+        accept(listen_fd, (struct sockaddr *) &their_addr, &addr_size);
+
+    char s[INET6_ADDRSTRLEN];
+    inet_ntop(their_addr.ss_family,
+              get_in_addr((struct sockaddr *) &their_addr), s,
+              sizeof s);
+
+    dprintf(log,
+            "accepted connection from %s (socket FD: %d)",
+            s, conn_fd);
+
+    evt.mtype = 1;
+    evt.etype = EVT_CONN_ACCEPTED;
+    evt.edata.conn_accepted.worker_id = worker_id;
+    evt.edata.conn_accepted.sockaddr =
+        *(struct sockaddr *) &their_addr;
+    evt.edata.conn_accepted.fd = conn_fd;
+    evt_size =
+        sizeof evt.mtype + sizeof evt.etype +
+        sizeof evt.edata.conn_accepted;
+    if (msgsnd(msqid, &evt, evt_size, 0) == -1) {
+        perror("msgsnd");
+    }
+   
+    module->handle_func(conn_fd, msqid, ac, av);
+
+    close(conn_fd);
+}
+
 int main(int argc, char *argv[])
 {
     char *port_to;
@@ -92,10 +145,7 @@ int main(int argc, char *argv[])
     struct addrinfo hints;
     struct addrinfo *res;
     int sockfd;
-    int conn_fd;
-    struct sockaddr_storage their_addr;
     struct sigaction sa;
-    char s[INET6_ADDRSTRLEN];
     int c;
     int workers;
     int tty;
@@ -196,6 +246,7 @@ int main(int argc, char *argv[])
     }
 
     struct sockaddr *sa1 = res->ai_addr;
+    char s[INET6_ADDRSTRLEN];
     inet_ntop(sa1->sa_family, get_in_addr(sa1), s, sizeof s);
     fprintf(stderr, "%s: Listening on %s:%d\n",
             program_name, s, ntohs(*get_in_port(sa1)));
@@ -235,51 +286,9 @@ int main(int argc, char *argv[])
             int log = logs_in[i][1];
 
             // Accept loop
-            do {
-                socklen_t addr_size;
-                addr_size = sizeof their_addr;
-
-                dprintf(log, "waiting for a connection...");
-
-                struct evt_base evt;
-                evt.mtype = 1;
-                evt.etype = EVT_WORKER_READY;
-                evt.edata.worker_ready.worker_id = i;
-                size_t evt_size =
-                    sizeof evt.mtype + sizeof evt.etype +
-                    sizeof evt.edata.worker_ready;
-                if (msgsnd(msqid, &evt, evt_size, 0) == -1) {
-                    perror("msgsnd");
-                }
-
-                conn_fd =
-                    accept(sockfd, (struct sockaddr *) &their_addr, &addr_size);
-
-                inet_ntop(their_addr.ss_family,
-                          get_in_addr((struct sockaddr *) &their_addr), s,
-                          sizeof s);
-
-                dprintf(log,
-                        "accepted connection from %s (socket FD: %d)",
-                        s, conn_fd);
-
-                evt.mtype = 1;
-                evt.etype = EVT_CONN_ACCEPTED;
-                evt.edata.conn_accepted.worker_id = i;
-                evt.edata.conn_accepted.sockaddr =
-                    *(struct sockaddr *) &their_addr;
-                evt.edata.conn_accepted.fd = conn_fd;
-                evt_size =
-                    sizeof evt.mtype + sizeof evt.etype +
-                    sizeof evt.edata.conn_accepted;
-                if (msgsnd(msqid, &evt, evt_size, 0) == -1) {
-                    perror("msgsnd");
-                }
-
-                module->handle_func(conn_fd, msqid, ac, av);
-
-                close(conn_fd);
-            } while (1);
+            while (1) {
+                handle_request(log, i, msqid, sockfd, module, ac, av);
+            }
         }
 
         close(logs_in[i][1]);
@@ -372,6 +381,9 @@ void trim_log(char *buf, int n)
 }
 
 /**
+ * Bridges backend and frontend
+ *
+ * It is supposed to be used from within handling function of the modules
  * Poll event constants are defined here:
  * include/uapi/asm-generic/poll.h
  */
