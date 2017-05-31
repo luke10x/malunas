@@ -335,6 +335,16 @@ int main(int argc, char *argv[])
                     msg.edata.conn_accepted.fd);
             break;
 
+        case EVT_REQUEST_READ:
+            dprintf(2, "[>] %s - %d bytes received\n", 
+                    worker_names[msg.edata.request_read.worker_id],
+                    msg.edata.request_read.bytes);
+            break;
+        case EVT_RESPONSE_SENT:
+            dprintf(2, "[<] %s - %d bytes sent\n", 
+                    worker_names[msg.edata.response_sent.worker_id],
+                    msg.edata.response_sent.bytes);
+            break;
         default:
             printf("Unknown event!!!\n");
         }
@@ -420,7 +430,17 @@ int pass_traffic(int front_read, int front_write, int back_read, int back_write)
                     buf[n] = 0;
                     send(front_write, buf, n, 0);
 
-                    /*dprintf(2, "received %d bytes: %s\n", n, buf);*/
+                    struct evt_base evt;
+                    evt.mtype = 1;
+                    evt.etype = EVT_RESPONSE_SENT;
+                    evt.edata.response_sent.worker_id = worker_id;
+                    evt.edata.response_sent.bytes = n;
+                    int evt_size =
+                        sizeof evt.mtype + sizeof evt.etype +
+                        sizeof evt.edata.response_sent;
+                    if (msgsnd(msqid, &evt, evt_size, 0) == -1) {
+                        perror("msgsnd");
+                    }
                 } else break;
             }
 
@@ -432,7 +452,17 @@ int pass_traffic(int front_read, int front_write, int back_read, int back_write)
                     buf[n] = 0;
                     write(back_write, buf, n);
 
-                    /*dprintf(2, "sent %d bytes: %s\n", n, buf);*/
+                    struct evt_base evt;
+                    evt.mtype = 1;
+                    evt.etype = EVT_REQUEST_READ;
+                    evt.edata.request_read.worker_id = worker_id;
+                    evt.edata.request_read.bytes = n;
+                    int evt_size =
+                        sizeof evt.mtype + sizeof evt.etype +
+                        sizeof evt.edata.request_read;
+                    if (msgsnd(msqid, &evt, evt_size, 0) == -1) {
+                        perror("msgsnd");
+                    }
                 } else break;
             }
 
