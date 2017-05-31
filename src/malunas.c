@@ -92,7 +92,7 @@ int worker_id;
 int msqid;
 
 /* Will be increased for each request */
-int request_id;
+long unsigned int request_id;
 
 /**
  * Accepts and handles one request
@@ -300,6 +300,7 @@ int main(int argc, char *argv[])
 
             // Accept loop
             while (1) {
+                request_id++;
                 handle_request(log, sockfd, module, ac, av);
             }
         }
@@ -336,20 +337,23 @@ int main(int argc, char *argv[])
             client_addr = msg.edata.conn_accepted.sockaddr;
             inet_ntop(client_addr.sa_family, get_in_addr(&client_addr), s,
                       sizeof s);
-            dprintf(2, "[?] %s - CONNECTION FROM %s:%d (FD: %d)\n",
-                    worker_names[msg.edata.conn_accepted.worker_id], s,
+            dprintf(2, "[?] %s.%lu - CONNECTION FROM %s:%d (FD: %d)\n",
+                    worker_names[msg.edata.conn_accepted.worker_id],
+                    msg.edata.conn_accepted.request_id, s,
                     ntohs(*get_in_port(&client_addr)),
                     msg.edata.conn_accepted.fd);
             break;
 
         case EVT_REQUEST_READ:
-            dprintf(2, "[>] %s - %d bytes received\n", 
+            dprintf(2, "[>] %s.%lu - %d bytes received\n", 
                     worker_names[msg.edata.request_read.worker_id],
+                    msg.edata.request_read.request_id,
                     msg.edata.request_read.bytes);
             break;
         case EVT_RESPONSE_SENT:
-            dprintf(2, "[<] %s - %d bytes sent\n", 
+            dprintf(2, "[<] %s.%lu - %d bytes sent\n", 
                     worker_names[msg.edata.response_sent.worker_id],
+                    msg.edata.response_sent.request_id,
                     msg.edata.response_sent.bytes);
             break;
         default:
