@@ -91,6 +91,9 @@ int worker_id;
 /* IPC */
 int msqid;
 
+/* Will be increased for each request */
+int request_id;
+
 /**
  * Accepts and handles one request
  */
@@ -129,6 +132,7 @@ int handle_request(int log, int listen_fd, t_modulecfg *module, int ac, char **a
     evt.mtype = 1;
     evt.etype = EVT_CONN_ACCEPTED;
     evt.edata.conn_accepted.worker_id = worker_id;
+    evt.edata.conn_accepted.request_id = request_id;
     evt.edata.conn_accepted.sockaddr =
         *(struct sockaddr *) &their_addr;
     evt.edata.conn_accepted.fd = conn_fd;
@@ -291,6 +295,9 @@ int main(int argc, char *argv[])
             close(logs_in[i][0]);
             int log = logs_in[i][1];
 
+            /* each worker will count from beginning */
+            request_id = 0;
+
             // Accept loop
             while (1) {
                 handle_request(log, sockfd, module, ac, av);
@@ -434,6 +441,7 @@ int pass_traffic(int front_read, int front_write, int back_read, int back_write)
                     evt.mtype = 1;
                     evt.etype = EVT_RESPONSE_SENT;
                     evt.edata.response_sent.worker_id = worker_id;
+                    evt.edata.response_sent.request_id = request_id;
                     evt.edata.response_sent.bytes = n;
                     int evt_size =
                         sizeof evt.mtype + sizeof evt.etype +
@@ -456,6 +464,7 @@ int pass_traffic(int front_read, int front_write, int back_read, int back_write)
                     evt.mtype = 1;
                     evt.etype = EVT_REQUEST_READ;
                     evt.edata.request_read.worker_id = worker_id;
+                    evt.edata.request_read.request_id = request_id;
                     evt.edata.request_read.bytes = n;
                     int evt_size =
                         sizeof evt.mtype + sizeof evt.etype +
