@@ -2,11 +2,6 @@
 
 #define event_h__
 
-struct my_msgbuf {
-    long mtype;
-    char mtext[15];
-};
-
 #define EVT_WORKER_READY 1
 #define EVT_CONN_ACCEPTED 2
 #define EVT_REQUEST_READ 3
