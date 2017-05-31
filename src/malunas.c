@@ -85,10 +85,16 @@ in_port_t *get_in_port(struct sockaddr *sa)
     return &(((struct sockaddr_in6 *) sa)->sin6_port);
 }
 
+/* Will be set for each process while forking */
+int worker_id;
+
+/* IPC */
+int msqid;
+
 /**
- * Accepts and hanles one request
+ * Accepts and handles one request
  */
-int handle_request(int log, int worker_id, int msqid, int listen_fd, t_modulecfg *module, int ac, char **av)
+int handle_request(int log, int listen_fd, t_modulecfg *module, int ac, char **av)
 {
     struct sockaddr_storage their_addr;
     socklen_t addr_size;
@@ -256,8 +262,6 @@ int main(int argc, char *argv[])
 
     struct pollfd poll_fds_in[workers];
 
-    /* IPC */
-    int msqid;
     key_t key;
 
     if ((key = ftok("malunas", 'a')) == -1) {
@@ -278,6 +282,8 @@ int main(int argc, char *argv[])
         poll_fds_in[i].fd = logs_in[i][0];
         poll_fds_in[i].events = POLLIN;
 
+        /* Set global before forking */
+        worker_id = i;
         if ((pid = fork()) == -1) {
             exit(1);
         } else if (pid == 0) {
@@ -287,7 +293,7 @@ int main(int argc, char *argv[])
 
             // Accept loop
             while (1) {
-                handle_request(log, i, msqid, sockfd, module, ac, av);
+                handle_request(log, sockfd, module, ac, av);
             }
         }
 
@@ -299,7 +305,6 @@ int main(int argc, char *argv[])
         worker_names[i][9] = 0;
     }
 
-    printf("msqid = %d", msqid);
     if ((msqid = msgget(key, 0644)) == -1) {
         perror("msgget");
         exit(1);
@@ -308,7 +313,7 @@ int main(int argc, char *argv[])
     int msgsize;
     for (;;) {
         struct evt_base msg;
-        if ((msgsize = msgrcv(msqid, &msg, 40, 0, 0)) == -1) {
+        if ((msgsize = msgrcv(msqid, &msg, 512, 0, 0)) == -1) {
             perror("msgrcv");
             exit(1);
         }
