@@ -148,6 +148,11 @@ int handle_request(int log, int listen_fd, t_modulecfg *module, int ac, char **a
     close(conn_fd);
 }
 
+struct request_state {
+    unsigned long in;
+    unsigned long out;
+};
+
 int main(int argc, char *argv[])
 {
     char *port_to;
@@ -318,6 +323,8 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
+    
+    struct request_state reqstates[workers];
     int msgsize;
     for (;;) {
         struct evt_base msg;
@@ -330,6 +337,8 @@ int main(int argc, char *argv[])
         case EVT_WORKER_READY:
             dprintf(2, "[?] %s - WORKER READY\n",
                     worker_names[msg.edata.worker_ready.worker_id]);
+            reqstates[msg.edata.worker_ready.worker_id].in = 0;
+            reqstates[msg.edata.worker_ready.worker_id].out = 0;
             break;
         case EVT_CONN_ACCEPTED:
             1;
@@ -345,16 +354,18 @@ int main(int argc, char *argv[])
             break;
 
         case EVT_REQUEST_READ:
-            dprintf(2, "[>] %s.%lu - %d bytes received\n", 
+            reqstates[msg.edata.request_read.worker_id].in += msg.edata.request_read.bytes;
+            dprintf(2, "[>] %s.%lu - %lu bytes received\n", 
                     worker_names[msg.edata.request_read.worker_id],
                     msg.edata.request_read.request_id,
-                    msg.edata.request_read.bytes);
+                    reqstates[msg.edata.request_read.worker_id].in);
             break;
         case EVT_RESPONSE_SENT:
-            dprintf(2, "[<] %s.%lu - %d bytes sent\n", 
+            reqstates[msg.edata.response_sent.worker_id].out += msg.edata.response_sent.bytes;
+            dprintf(2, "[<] %s.%lu - %lu bytes sent\n", 
                     worker_names[msg.edata.response_sent.worker_id],
                     msg.edata.response_sent.request_id,
-                    msg.edata.response_sent.bytes);
+                    reqstates[msg.edata.response_sent.worker_id].out);
             break;
         default:
             printf("Unknown event!!!\n");
