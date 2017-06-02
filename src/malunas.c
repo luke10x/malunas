@@ -151,7 +151,34 @@ int handle_request(int log, int listen_fd, t_modulecfg *module, int ac, char **a
 struct request_state {
     unsigned long in;
     unsigned long out;
+    int status;
 };
+
+int del_reqstates(int reqstates_printed)
+{
+
+    int i;
+    for (i = 0; i < reqstates_printed; i++) {
+        dprintf(2, "\033[2K\033[A"); 
+        break;
+    }
+}
+
+int print_reqstates(struct request_state *reqstates, int worker_count, char **worker_names)
+{
+    int printed = 0;
+    int i;
+    for (i = 0; i < worker_count; i++) {
+
+        dprintf(2, "[=] %s recv/sent: %lu/%lu bytes\n", 
+                worker_names[i],
+                reqstates[i].in,
+                reqstates[i].out
+                );
+        printed++;
+    }
+    return printed;
+}
 
 int main(int argc, char *argv[])
 {
@@ -323,9 +350,11 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    
     struct request_state reqstates[workers];
+    int active_rqs = 0; 
+
     int msgsize;
+    int reqstates_printed = 0;
     for (;;) {
         struct evt_base msg;
         if ((msgsize = msgrcv(msqid, &msg, 512, 0, 0)) == -1) {
@@ -355,17 +384,14 @@ int main(int argc, char *argv[])
 
         case EVT_REQUEST_READ:
             reqstates[msg.edata.request_read.worker_id].in += msg.edata.request_read.bytes;
-            dprintf(2, "[>] %s.%lu - %lu bytes received\n", 
-                    worker_names[msg.edata.request_read.worker_id],
-                    msg.edata.request_read.request_id,
-                    reqstates[msg.edata.request_read.worker_id].in);
+
+            del_reqstates(reqstates_printed);
+            reqstates_printed = print_reqstates((struct request_state *)&reqstates, workers, (char **)&worker_names);
             break;
         case EVT_RESPONSE_SENT:
             reqstates[msg.edata.response_sent.worker_id].out += msg.edata.response_sent.bytes;
-            dprintf(2, "[<] %s.%lu - %lu bytes sent\n", 
-                    worker_names[msg.edata.response_sent.worker_id],
-                    msg.edata.response_sent.request_id,
-                    reqstates[msg.edata.response_sent.worker_id].out);
+            del_reqstates(reqstates_printed);
+            reqstates_printed = print_reqstates((struct request_state *)&reqstates, workers, (char **)&worker_names);
             break;
         default:
             printf("Unknown event!!!\n");
