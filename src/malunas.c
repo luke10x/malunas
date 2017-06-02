@@ -151,16 +151,17 @@ int handle_request(int log, int listen_fd, t_modulecfg *module, int ac, char **a
 struct request_state {
     unsigned long in;
     unsigned long out;
+    int fd;
+    struct sockaddr client_addr;
     int status;
+    unsigned long request_id;
 };
 
 int del_reqstates(int reqstates_printed)
 {
-
     int i;
     for (i = 0; i < reqstates_printed; i++) {
         dprintf(2, "\033[2K\033[A"); 
-        break;
     }
 }
 
@@ -170,12 +171,20 @@ int print_reqstates(struct request_state *reqstates, int worker_count, char **wo
     int i;
     for (i = 0; i < worker_count; i++) {
 
-        dprintf(2, "[=] %s recv/sent: %lu/%lu bytes\n", 
-                worker_names[i],
-                reqstates[i].in,
-                reqstates[i].out
-                );
-        printed++;
+        if (reqstates[i].status == 1) {
+            struct sockaddr client_addr = reqstates[i].client_addr;
+            char s[INET6_ADDRSTRLEN];
+            inet_ntop(client_addr.sa_family, get_in_addr(&client_addr), s,
+                      sizeof s);
+            dprintf(2, "[+] %s #%lu %s:%d FD:%d R/S:%lu/%luB\n",
+                    worker_names[i],
+                    reqstates[i].request_id, s,
+                    ntohs(*get_in_port(&client_addr)),
+                    reqstates[i].fd,
+                    reqstates[i].in,
+                    reqstates[i].out);
+            printed++;
+        }
     }
     return printed;
 }
@@ -364,22 +373,14 @@ int main(int argc, char *argv[])
 
         switch (msg.etype) {
         case EVT_WORKER_READY:
-            dprintf(2, "[?] %s - WORKER READY\n",
-                    worker_names[msg.edata.worker_ready.worker_id]);
             reqstates[msg.edata.worker_ready.worker_id].in = 0;
             reqstates[msg.edata.worker_ready.worker_id].out = 0;
             break;
         case EVT_CONN_ACCEPTED:
-            1;
-            struct sockaddr client_addr;
-            client_addr = msg.edata.conn_accepted.sockaddr;
-            inet_ntop(client_addr.sa_family, get_in_addr(&client_addr), s,
-                      sizeof s);
-            dprintf(2, "[?] %s.%lu - CONNECTION FROM %s:%d (FD: %d)\n",
-                    worker_names[msg.edata.conn_accepted.worker_id],
-                    msg.edata.conn_accepted.request_id, s,
-                    ntohs(*get_in_port(&client_addr)),
-                    msg.edata.conn_accepted.fd);
+            reqstates[msg.edata.conn_accepted.worker_id].status = 1;
+            reqstates[msg.edata.conn_accepted.worker_id].request_id = msg.edata.conn_accepted.request_id;
+            reqstates[msg.edata.conn_accepted.worker_id].client_addr = msg.edata.conn_accepted.sockaddr;
+            reqstates[msg.edata.conn_accepted.worker_id].fd = msg.edata.conn_accepted.fd;
             break;
 
         case EVT_REQUEST_READ:
@@ -390,7 +391,26 @@ int main(int argc, char *argv[])
             break;
         case EVT_RESPONSE_SENT:
             reqstates[msg.edata.response_sent.worker_id].out += msg.edata.response_sent.bytes;
+
             del_reqstates(reqstates_printed);
+            reqstates_printed = print_reqstates((struct request_state *)&reqstates, workers, (char **)&worker_names);
+            break;
+        case EVT_REQUEST_ENDED:
+            reqstates[msg.edata.conn_accepted.worker_id].status = 0;
+
+            struct sockaddr client_addr = reqstates[msg.edata.request_ended.worker_id].client_addr;
+            inet_ntop(client_addr.sa_family, get_in_addr(&client_addr), s,
+                      sizeof s);
+
+            del_reqstates(reqstates_printed);
+            dprintf(2, "[-] %s #%lu %s:%d FD:%d R/S:%lu/%luB\n",
+                    worker_names[msg.edata.request_ended.worker_id],
+                    msg.edata.request_ended.request_id, s,
+                    ntohs(*get_in_port(&client_addr)),
+                    reqstates[msg.edata.request_ended.worker_id].fd,
+                    reqstates[msg.edata.request_ended.worker_id].in,
+                    reqstates[msg.edata.request_ended.worker_id].out);
+
             reqstates_printed = print_reqstates((struct request_state *)&reqstates, workers, (char **)&worker_names);
             break;
         default:
@@ -524,4 +544,16 @@ int pass_traffic(int front_read, int front_write, int back_read, int back_write)
             }
         }
     } while (1);
+
+    struct evt_base evt;
+    evt.mtype = 1;
+    evt.etype = EVT_REQUEST_ENDED;
+    evt.edata.request_ended.worker_id = worker_id;
+    evt.edata.request_ended.request_id = request_id;
+    int evt_size =
+        sizeof evt.mtype + sizeof evt.etype +
+        sizeof evt.edata.request_ended;
+    if (msgsnd(msqid, &evt, evt_size, 0) == -1) {
+        perror("msgsnd");
+    }
 }
