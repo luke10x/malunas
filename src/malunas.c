@@ -97,7 +97,8 @@ long unsigned int request_id;
 /**
  * Accepts and handles one request
  */
-int handle_request(int log, int listen_fd, t_modulecfg *module, int ac, char **av)
+int handle_request(int log, int listen_fd, t_modulecfg * module, int ac,
+                   char **av)
 {
     struct sockaddr_storage their_addr;
     socklen_t addr_size;
@@ -110,39 +111,32 @@ int handle_request(int log, int listen_fd, t_modulecfg *module, int ac, char **a
     evt.etype = EVT_WORKER_READY;
     evt.edata.worker_ready.worker_id = worker_id;
     size_t evt_size =
-        sizeof evt.mtype + sizeof evt.etype +
-        sizeof evt.edata.worker_ready;
+        sizeof evt.mtype + sizeof evt.etype + sizeof evt.edata.worker_ready;
     if (msgsnd(msqid, &evt, evt_size, 0) == -1) {
         perror("msgsnd");
     }
 
     int conn_fd;
-    conn_fd =
-        accept(listen_fd, (struct sockaddr *) &their_addr, &addr_size);
+    conn_fd = accept(listen_fd, (struct sockaddr *) &their_addr, &addr_size);
 
     char s[INET6_ADDRSTRLEN];
     inet_ntop(their_addr.ss_family,
-              get_in_addr((struct sockaddr *) &their_addr), s,
-              sizeof s);
+              get_in_addr((struct sockaddr *) &their_addr), s, sizeof s);
 
-    dprintf(log,
-            "accepted connection from %s (socket FD: %d)",
-            s, conn_fd);
+    dprintf(log, "accepted connection from %s (socket FD: %d)", s, conn_fd);
 
     evt.mtype = 1;
     evt.etype = EVT_CONN_ACCEPTED;
     evt.edata.conn_accepted.worker_id = worker_id;
     evt.edata.conn_accepted.request_id = request_id;
-    evt.edata.conn_accepted.sockaddr =
-        *(struct sockaddr *) &their_addr;
+    evt.edata.conn_accepted.sockaddr = *(struct sockaddr *) &their_addr;
     evt.edata.conn_accepted.fd = conn_fd;
     evt_size =
-        sizeof evt.mtype + sizeof evt.etype +
-        sizeof evt.edata.conn_accepted;
+        sizeof evt.mtype + sizeof evt.etype + sizeof evt.edata.conn_accepted;
     if (msgsnd(msqid, &evt, evt_size, 0) == -1) {
         perror("msgsnd");
     }
-   
+
     module->handle_func(conn_fd, msqid, ac, av);
 
     close(conn_fd);
@@ -161,11 +155,12 @@ int del_reqstates(int reqstates_printed)
 {
     int i;
     for (i = 0; i < reqstates_printed; i++) {
-        dprintf(2, "\033[2K\033[A"); 
+        dprintf(2, "\033[2K\033[A");
     }
 }
 
-int print_reqstates(struct request_state *reqstates, int worker_count, char **worker_names)
+int print_reqstates(struct request_state *reqstates, int worker_count,
+                    char **worker_names)
 {
     int printed = 0;
     int i;
@@ -180,9 +175,7 @@ int print_reqstates(struct request_state *reqstates, int worker_count, char **wo
                     worker_names[i],
                     reqstates[i].request_id, s,
                     ntohs(*get_in_port(&client_addr)),
-                    reqstates[i].fd,
-                    reqstates[i].in,
-                    reqstates[i].out);
+                    reqstates[i].fd, reqstates[i].in, reqstates[i].out);
             printed++;
         }
     }
@@ -360,7 +353,7 @@ int main(int argc, char *argv[])
     }
 
     struct request_state reqstates[workers];
-    int active_rqs = 0; 
+    int active_rqs = 0;
 
     int msgsize;
     int reqstates_printed = 0;
@@ -378,27 +371,37 @@ int main(int argc, char *argv[])
             break;
         case EVT_CONN_ACCEPTED:
             reqstates[msg.edata.conn_accepted.worker_id].status = 1;
-            reqstates[msg.edata.conn_accepted.worker_id].request_id = msg.edata.conn_accepted.request_id;
-            reqstates[msg.edata.conn_accepted.worker_id].client_addr = msg.edata.conn_accepted.sockaddr;
-            reqstates[msg.edata.conn_accepted.worker_id].fd = msg.edata.conn_accepted.fd;
+            reqstates[msg.edata.conn_accepted.worker_id].request_id =
+                msg.edata.conn_accepted.request_id;
+            reqstates[msg.edata.conn_accepted.worker_id].client_addr =
+                msg.edata.conn_accepted.sockaddr;
+            reqstates[msg.edata.conn_accepted.worker_id].fd =
+                msg.edata.conn_accepted.fd;
             break;
 
         case EVT_REQUEST_READ:
-            reqstates[msg.edata.request_read.worker_id].in += msg.edata.request_read.bytes;
+            reqstates[msg.edata.request_read.worker_id].in +=
+                msg.edata.request_read.bytes;
 
             del_reqstates(reqstates_printed);
-            reqstates_printed = print_reqstates((struct request_state *)&reqstates, workers, (char **)&worker_names);
+            reqstates_printed =
+                print_reqstates((struct request_state *) &reqstates, workers,
+                                (char **) &worker_names);
             break;
         case EVT_RESPONSE_SENT:
-            reqstates[msg.edata.response_sent.worker_id].out += msg.edata.response_sent.bytes;
+            reqstates[msg.edata.response_sent.worker_id].out +=
+                msg.edata.response_sent.bytes;
 
             del_reqstates(reqstates_printed);
-            reqstates_printed = print_reqstates((struct request_state *)&reqstates, workers, (char **)&worker_names);
+            reqstates_printed =
+                print_reqstates((struct request_state *) &reqstates, workers,
+                                (char **) &worker_names);
             break;
         case EVT_REQUEST_ENDED:
             reqstates[msg.edata.conn_accepted.worker_id].status = 0;
 
-            struct sockaddr client_addr = reqstates[msg.edata.request_ended.worker_id].client_addr;
+            struct sockaddr client_addr =
+                reqstates[msg.edata.request_ended.worker_id].client_addr;
             inet_ntop(client_addr.sa_family, get_in_addr(&client_addr), s,
                       sizeof s);
 
@@ -411,7 +414,9 @@ int main(int argc, char *argv[])
                     reqstates[msg.edata.request_ended.worker_id].in,
                     reqstates[msg.edata.request_ended.worker_id].out);
 
-            reqstates_printed = print_reqstates((struct request_state *)&reqstates, workers, (char **)&worker_names);
+            reqstates_printed =
+                print_reqstates((struct request_state *) &reqstates, workers,
+                                (char **) &worker_names);
             break;
         default:
             printf("Unknown event!!!\n");
@@ -491,7 +496,7 @@ int pass_traffic(int front_read, int front_write, int back_read, int back_write)
             /*Poll timeout */
         } else {
             if (br_pollfd->revents & POLLIN) {
-                char buf[0x10+1] = { 0 };
+                char buf[0x10 + 1] = { 0 };
                 int n = read(br_pollfd->fd, buf, 0x10);
 
                 if (n > 0) {
@@ -510,11 +515,12 @@ int pass_traffic(int front_read, int front_write, int back_read, int back_write)
                     if (msgsnd(msqid, &evt, evt_size, 0) == -1) {
                         perror("msgsnd");
                     }
-                } else break;
+                } else
+                    break;
             }
 
             if (fr_pollfd->revents & POLLIN) {
-                char buf[0x10+1] = { 0 };
+                char buf[0x10 + 1] = { 0 };
                 int n = read(fr_pollfd->fd, buf, 0x10);
 
                 if (n > 0) {
@@ -533,7 +539,8 @@ int pass_traffic(int front_read, int front_write, int back_read, int back_write)
                     if (msgsnd(msqid, &evt, evt_size, 0) == -1) {
                         perror("msgsnd");
                     }
-                } else break;
+                } else
+                    break;
             }
 
             if (br_pollfd->revents & POLLHUP) {
@@ -551,8 +558,7 @@ int pass_traffic(int front_read, int front_write, int back_read, int back_write)
     evt.edata.request_ended.worker_id = worker_id;
     evt.edata.request_ended.request_id = request_id;
     int evt_size =
-        sizeof evt.mtype + sizeof evt.etype +
-        sizeof evt.edata.request_ended;
+        sizeof evt.mtype + sizeof evt.etype + sizeof evt.edata.request_ended;
     if (msgsnd(msqid, &evt, evt_size, 0) == -1) {
         perror("msgsnd");
     }

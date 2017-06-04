@@ -141,7 +141,8 @@ HELLO\n\
     exit(1);
 }
 
-extern int pass_traffic(int front_read, int front_write, int back_read, int back_write);
+extern int pass_traffic(int front_read, int front_write, int back_read,
+                        int back_write);
 
 void mlns_exec_handle(int conn_fd, int logfd, int argc, char *argv[])
 {
