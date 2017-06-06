@@ -416,8 +416,7 @@ int main(int argc, char *argv[])
                     ntohs(*get_in_port(&client_addr)),
                     reqstates[msg.edata.request_ended.worker_id].fd,
                     reqstates[msg.edata.request_ended.worker_id].in,
-                    reqstates[msg.edata.request_ended.worker_id].out,
-                    "DONE");
+                    reqstates[msg.edata.request_ended.worker_id].out, "DONE");
 
             reqstates_printed =
                 print_reqstates((struct request_state *) &reqstates, workers,
