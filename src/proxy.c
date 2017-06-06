@@ -32,10 +32,7 @@ HELLO\n\
     exit(1);
 }
 
-extern int pass_traffic(int front_read, int front_write, int back_read,
-                        int back_write);
-
-void mlns_proxy_handle(int server_fd, int logfd, int argc, char *argv[])
+void mlns_proxy_getends(int argc, char *argv[], int *readfd, int *writefd)
 {
 
     int client_fd;
@@ -82,9 +79,6 @@ void mlns_proxy_handle(int server_fd, int logfd, int argc, char *argv[])
         return;
     }
 
-    /* Read-end of backend is a write-end of the process */
-    pass_traffic(server_fd, server_fd, client_fd, client_fd);
-
-    close(client_fd);
-    close(server_fd);
+    *readfd = client_fd;
+    *writefd = client_fd;
 }

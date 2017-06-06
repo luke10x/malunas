@@ -2,7 +2,7 @@
 
 #define proxy_h__
 
-void mlns_proxy_handle(int conn_fd, int logfd, int ac, char *av[]);
+void mlns_proxy_getends(int argc, char *argv[], int *readfd, int *writefd);
 
 #endif
 

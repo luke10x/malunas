@@ -24,12 +24,12 @@ static struct option const longopts[] = {
 
 typedef struct {
     char *name;
-    void (*handle_func) (int, int, int, char **);
+    void (*getends_func) (int, char **, int *, int *);
 } t_modulecfg;
 
 t_modulecfg modules[] = {
-    {"exec", mlns_exec_handle},
-    {"proxy", mlns_proxy_handle}
+    {"exec", mlns_exec_getends},
+    {"proxy", mlns_proxy_getends}
 };
 
 void usage(int status)
@@ -97,6 +97,102 @@ long unsigned int request_id;
 const char *LOG_FMT = "[%c] %s #%lu %s:%d %d %luB/%luB [%s]\n";
 
 /**
+ * Bridges backend and frontend
+ *
+ * It is supposed to be used from within handling function of the modules
+ * Poll event constants are defined here:
+ * include/uapi/asm-generic/poll.h
+ */
+int pass_traffic(int front_read, int front_write, int back_read, int back_write)
+{
+    struct pollfd poll_fds[2];
+    struct pollfd *fr_pollfd = &poll_fds[0];
+    struct pollfd *br_pollfd = &poll_fds[1];
+
+    fr_pollfd->fd = front_read;
+    fr_pollfd->events = POLLIN;
+
+    br_pollfd->fd = back_read;
+    br_pollfd->events = POLLIN;
+
+    do {
+        int ret = poll((struct pollfd *) &poll_fds, 2, 4000);
+        if (ret == -1) {
+            perror("poll");
+            break;
+        } else if (ret == 0) {
+            /*Poll timeout */
+        } else {
+            if (br_pollfd->revents & POLLIN) {
+                char buf[0x10 + 1] = { 0 };
+                int n = read(br_pollfd->fd, buf, 0x10);
+
+                if (n > 0) {
+                    buf[n] = 0;
+                    send(front_write, buf, n, 0);
+
+                    struct evt_base evt;
+                    evt.mtype = 1;
+                    evt.etype = EVT_RESPONSE_SENT;
+                    evt.edata.response_sent.worker_id = worker_id;
+                    evt.edata.response_sent.request_id = request_id;
+                    evt.edata.response_sent.bytes = n;
+                    int evt_size =
+                        sizeof evt.mtype + sizeof evt.etype +
+                        sizeof evt.edata.response_sent;
+                    if (msgsnd(msqid, &evt, evt_size, 0) == -1) {
+                        perror("msgsnd");
+                    }
+                } else
+                    break;
+            }
+
+            if (fr_pollfd->revents & POLLIN) {
+                char buf[0x10 + 1] = { 0 };
+                int n = read(fr_pollfd->fd, buf, 0x10);
+
+                if (n > 0) {
+                    buf[n] = 0;
+                    write(back_write, buf, n);
+
+                    struct evt_base evt;
+                    evt.mtype = 1;
+                    evt.etype = EVT_REQUEST_READ;
+                    evt.edata.request_read.worker_id = worker_id;
+                    evt.edata.request_read.request_id = request_id;
+                    evt.edata.request_read.bytes = n;
+                    int evt_size =
+                        sizeof evt.mtype + sizeof evt.etype +
+                        sizeof evt.edata.request_read;
+                    if (msgsnd(msqid, &evt, evt_size, 0) == -1) {
+                        perror("msgsnd");
+                    }
+                } else
+                    break;
+            }
+
+            if (br_pollfd->revents & POLLHUP) {
+                break;
+            }
+            if (fr_pollfd->revents & POLLHUP) {
+                break;
+            }
+        }
+    } while (1);
+
+    struct evt_base evt;
+    evt.mtype = 1;
+    evt.etype = EVT_REQUEST_ENDED;
+    evt.edata.request_ended.worker_id = worker_id;
+    evt.edata.request_ended.request_id = request_id;
+    int evt_size =
+        sizeof evt.mtype + sizeof evt.etype + sizeof evt.edata.request_ended;
+    if (msgsnd(msqid, &evt, evt_size, 0) == -1) {
+        perror("msgsnd");
+    }
+}
+
+/**
  * Accepts and handles one request
  */
 int handle_request(int log, int listen_fd, t_modulecfg * module, int ac,
@@ -139,7 +235,10 @@ int handle_request(int log, int listen_fd, t_modulecfg * module, int ac,
         perror("msgsnd");
     }
 
-    module->handle_func(conn_fd, msqid, ac, av);
+    int writefd;
+    int readfd;
+    module->getends_func(ac, av, &readfd, &writefd);
+    pass_traffic(conn_fd, conn_fd, readfd, writefd);
 
     close(conn_fd);
 }
@@ -470,100 +569,4 @@ void trim_log(char *buf, int n)
         buf[loglen - 1] = 133;
     }
     buf[loglen] = 0;
-}
-
-/**
- * Bridges backend and frontend
- *
- * It is supposed to be used from within handling function of the modules
- * Poll event constants are defined here:
- * include/uapi/asm-generic/poll.h
- */
-int pass_traffic(int front_read, int front_write, int back_read, int back_write)
-{
-    struct pollfd poll_fds[2];
-    struct pollfd *fr_pollfd = &poll_fds[0];
-    struct pollfd *br_pollfd = &poll_fds[1];
-
-    fr_pollfd->fd = front_read;
-    fr_pollfd->events = POLLIN;
-
-    br_pollfd->fd = back_read;
-    br_pollfd->events = POLLIN;
-
-    do {
-        int ret = poll((struct pollfd *) &poll_fds, 2, 4000);
-        if (ret == -1) {
-            perror("poll");
-            break;
-        } else if (ret == 0) {
-            /*Poll timeout */
-        } else {
-            if (br_pollfd->revents & POLLIN) {
-                char buf[0x10 + 1] = { 0 };
-                int n = read(br_pollfd->fd, buf, 0x10);
-
-                if (n > 0) {
-                    buf[n] = 0;
-                    send(front_write, buf, n, 0);
-
-                    struct evt_base evt;
-                    evt.mtype = 1;
-                    evt.etype = EVT_RESPONSE_SENT;
-                    evt.edata.response_sent.worker_id = worker_id;
-                    evt.edata.response_sent.request_id = request_id;
-                    evt.edata.response_sent.bytes = n;
-                    int evt_size =
-                        sizeof evt.mtype + sizeof evt.etype +
-                        sizeof evt.edata.response_sent;
-                    if (msgsnd(msqid, &evt, evt_size, 0) == -1) {
-                        perror("msgsnd");
-                    }
-                } else
-                    break;
-            }
-
-            if (fr_pollfd->revents & POLLIN) {
-                char buf[0x10 + 1] = { 0 };
-                int n = read(fr_pollfd->fd, buf, 0x10);
-
-                if (n > 0) {
-                    buf[n] = 0;
-                    write(back_write, buf, n);
-
-                    struct evt_base evt;
-                    evt.mtype = 1;
-                    evt.etype = EVT_REQUEST_READ;
-                    evt.edata.request_read.worker_id = worker_id;
-                    evt.edata.request_read.request_id = request_id;
-                    evt.edata.request_read.bytes = n;
-                    int evt_size =
-                        sizeof evt.mtype + sizeof evt.etype +
-                        sizeof evt.edata.request_read;
-                    if (msgsnd(msqid, &evt, evt_size, 0) == -1) {
-                        perror("msgsnd");
-                    }
-                } else
-                    break;
-            }
-
-            if (br_pollfd->revents & POLLHUP) {
-                break;
-            }
-            if (fr_pollfd->revents & POLLHUP) {
-                break;
-            }
-        }
-    } while (1);
-
-    struct evt_base evt;
-    evt.mtype = 1;
-    evt.etype = EVT_REQUEST_ENDED;
-    evt.edata.request_ended.worker_id = worker_id;
-    evt.edata.request_ended.request_id = request_id;
-    int evt_size =
-        sizeof evt.mtype + sizeof evt.etype + sizeof evt.edata.request_ended;
-    if (msgsnd(msqid, &evt, evt_size, 0) == -1) {
-        perror("msgsnd");
-    }
 }

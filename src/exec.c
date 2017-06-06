@@ -141,10 +141,7 @@ HELLO\n\
     exit(1);
 }
 
-extern int pass_traffic(int front_read, int front_write, int back_read,
-                        int back_write);
-
-void mlns_exec_handle(int conn_fd, int logfd, int argc, char *argv[])
+void mlns_exec_getends(int argc, char *argv[], int *readfd, int *writefd)
 {
     int c;
     int tty = 0;
@@ -168,25 +165,14 @@ void mlns_exec_handle(int conn_fd, int logfd, int argc, char *argv[])
     av = argv + optind;
     ac = argc - optind;
 
-    int writefd, readfd, errfd;
+    int errfd;
     pid_t pid;
     if (tty) {
         int fdm;
         pid = popen_tty(ac, av, (int *) &fdm);
-        writefd = readfd = fdm;
+        *writefd = fdm;
+        *readfd = fdm;
     } else {
-        pid = popen_pipes(ac, av,
-                          (int *) &writefd, (int *) &readfd, (int *) &errfd);
+        pid = popen_pipes(ac, av, writefd, readfd, (int *) &errfd);
     }
-
-    /* Read-end of backend is a write-end of the process */
-    pass_traffic(conn_fd, conn_fd, readfd, writefd);
-
-    close(conn_fd);
-
-    close(writefd);
-    close(readfd);
-    close(errfd);
-
-    kill(pid, SIGKILL);
 }
