@@ -94,6 +94,8 @@ int msqid;
 /* Will be increased for each request */
 long unsigned int request_id;
 
+const char *LOG_FMT = "[%c] %s #%lu %s:%d %d %luB/%luB [%s]\n";
+
 /**
  * Accepts and handles one request
  */
@@ -155,7 +157,8 @@ int del_reqstates(int reqstates_printed)
 {
     int i;
     for (i = 0; i < reqstates_printed; i++) {
-        dprintf(2, "\033[2K\033[A");
+        dprintf(2, "\033[A");
+        dprintf(2, "\033[2K");
     }
 }
 
@@ -171,11 +174,12 @@ int print_reqstates(struct request_state *reqstates, int worker_count,
             char s[INET6_ADDRSTRLEN];
             inet_ntop(client_addr.sa_family, get_in_addr(&client_addr), s,
                       sizeof s);
-            dprintf(2, "[+] %s #%lu %s:%d FD:%d R/S:%lu/%luB\n",
+            dprintf(2, LOG_FMT, '+',
                     worker_names[i],
                     reqstates[i].request_id, s,
                     ntohs(*get_in_port(&client_addr)),
-                    reqstates[i].fd, reqstates[i].in, reqstates[i].out);
+                    reqstates[i].fd, reqstates[i].in, reqstates[i].out,
+                    "CONNECTED...");
             printed++;
         }
     }
@@ -406,13 +410,14 @@ int main(int argc, char *argv[])
                       sizeof s);
 
             del_reqstates(reqstates_printed);
-            dprintf(2, "[-] %s #%lu %s:%d FD:%d R/S:%lu/%luB\n",
+            dprintf(2, LOG_FMT, '-',
                     worker_names[msg.edata.request_ended.worker_id],
                     msg.edata.request_ended.request_id, s,
                     ntohs(*get_in_port(&client_addr)),
                     reqstates[msg.edata.request_ended.worker_id].fd,
                     reqstates[msg.edata.request_ended.worker_id].in,
-                    reqstates[msg.edata.request_ended.worker_id].out);
+                    reqstates[msg.edata.request_ended.worker_id].out,
+                    "DONE");
 
             reqstates_printed =
                 print_reqstates((struct request_state *) &reqstates, workers,
