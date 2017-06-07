@@ -10,6 +10,7 @@
 #include <poll.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
+#include <sys/un.h>
 
 #include "exec.h"
 #include "proxy.h"
@@ -96,6 +97,27 @@ long unsigned int request_id;
 
 const char *LOG_FMT = "[%c] %s #%lu %s:%d %d %luB/%luB [%s]\n";
 
+int debugfd = 0;
+
+void dbg_signal_handler(int sig)
+{
+    unsigned int debuglistenfd, s2;
+    struct sockaddr_un serveraddr, clientaddr;
+    int len;
+
+    debuglistenfd = socket(AF_UNIX, SOCK_STREAM, 0);
+
+    serveraddr.sun_family = AF_UNIX;
+    sprintf(serveraddr.sun_path, "dbg-%d.sock", getpid());
+    unlink(serveraddr.sun_path);
+    len = strlen(serveraddr.sun_path) + sizeof(serveraddr.sun_family);
+    bind(debuglistenfd, (struct sockaddr *) &serveraddr, len);
+    listen(debuglistenfd, 1);
+
+    len = sizeof(struct sockaddr_un);
+    debugfd = accept(debuglistenfd, (struct sockaddr *) &clientaddr, &len);
+}
+
 /**
  * Bridges backend and frontend
  *
@@ -118,8 +140,15 @@ int pass_traffic(int front_read, int front_write, int back_read, int back_write)
     do {
         int ret = poll((struct pollfd *) &poll_fds, 2, 4000);
         if (ret == -1) {
+            if (debugfd != 0) {
+                continue;
+            }
             perror("poll");
             break;
+            /* SIGUSR1 causes poll() fail with -1.
+             * On real life load it is likely that signal is handled
+             * during another system call and that should be addressed.
+             */
         } else if (ret == 0) {
             /*Poll timeout */
         } else {
@@ -435,6 +464,14 @@ int main(int argc, char *argv[])
             /* each worker will count from beginning */
             request_id = 0;
 
+            sa.sa_handler = dbg_signal_handler;
+            sigemptyset(&sa.sa_mask);
+            sigaddset(&sa.sa_mask, SIGUSR1);
+            sa.sa_flags = SA_RESTART;
+            if (sigaction(SIGUSR1, &sa, NULL) == -1) {
+                perror("sigaction sigusr1");
+                exit(1);
+            }
             // Accept loop
             while (1) {
                 request_id++;
