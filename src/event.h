@@ -7,6 +7,7 @@
 #define EVT_REQUEST_READ 3
 #define EVT_RESPONSE_SENT 4
 #define EVT_REQUEST_ENDED 5
+#define EVT_DEBUG_OPENED 6
 
 struct evt_worker_ready {
     int worker_id;
@@ -36,6 +37,13 @@ struct evt_request_ended {
     long request_id;
 };
 
+struct evt_debug_opened {
+    int worker_id;
+    long request_id;
+    int fd;
+    char path[108];
+};
+
 struct evt_base {
     long mtype;
     int etype;
@@ -45,6 +53,7 @@ struct evt_base {
         struct evt_request_read request_read;
         struct evt_response_sent response_sent;
         struct evt_request_ended request_ended;
+        struct evt_debug_opened debug_opened;
     } edata;
 };
 

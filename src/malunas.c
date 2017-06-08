@@ -103,6 +103,8 @@ const char *LOG_FMT = "[%c] %s #%lu %s:%d %d %luB/%luB [%s]\n";
 
 int debugfd = 0;
 
+char debugpath[108];
+
 void dbg_signal_handler(int sig)
 {
     unsigned int debuglistenfd, s2;
@@ -119,6 +121,20 @@ void dbg_signal_handler(int sig)
     listen(debuglistenfd, 1);
 
     len = sizeof(struct sockaddr_un);
+
+	struct evt_base evt;
+	evt.mtype = 1;
+	evt.etype = EVT_DEBUG_OPENED;
+	evt.edata.debug_opened.worker_id = worker_id;
+	evt.edata.debug_opened.request_id = request_id;
+	strcpy(evt.edata.debug_opened.path, (char *)&serveraddr.sun_path);
+	int evt_size =
+		sizeof evt.mtype + sizeof evt.etype +
+		sizeof evt.edata.debug_opened;
+	if (msgsnd(msqid, &evt, evt_size, 0) == -1) {
+		perror("msgsnd");
+	}
+
     debugfd = accept(debuglistenfd, (struct sockaddr *) &clientaddr, &len);
 }
 
@@ -341,6 +357,9 @@ struct request_state {
     struct sockaddr client_addr;
     int status;
     unsigned long request_id;
+    int debugfd;
+    int debugflag;
+    char debugpath[108];
 };
 
 int del_reqstates(int reqstates_printed)
@@ -364,12 +383,21 @@ int print_reqstates(struct request_state *reqstates, int worker_count,
             char s[INET6_ADDRSTRLEN];
             inet_ntop(client_addr.sa_family, get_in_addr(&client_addr), s,
                       sizeof s);
+			char status[128];
+			if (reqstates[i].debugflag == 0) {
+				strcpy(status, "CONNECTED...");
+			} else {
+                /*sprintf(worker_name, "PID:%d", pid);*/
+                sprintf((char *)&status, "DEBUG WAITING ON %s", (char *)&(reqstates[i].debugpath));
+				/*strcpy(status, reqstates[i].debugpath);*/
+			}
+
             dprintf(2, LOG_FMT, '+',
                     worker_names[i],
                     reqstates[i].request_id, s,
                     ntohs(*get_in_port(&client_addr)),
                     reqstates[i].fd, reqstates[i].in, reqstates[i].out,
-                    "CONNECTED...");
+                    status);
             printed++;
         }
     }
@@ -570,6 +598,7 @@ int main(int argc, char *argv[])
         case EVT_WORKER_READY:
             reqstates[msg.edata.worker_ready.worker_id].in = 0;
             reqstates[msg.edata.worker_ready.worker_id].out = 0;
+            reqstates[msg.edata.worker_ready.worker_id].debugflag = 0;
             break;
         case EVT_CONN_ACCEPTED:
             reqstates[msg.edata.conn_accepted.worker_id].status = 1;
@@ -620,6 +649,16 @@ int main(int argc, char *argv[])
                 print_reqstates((struct request_state *) &reqstates, workers,
                                 (char **) &worker_names);
             break;
+		case EVT_DEBUG_OPENED:
+             strcpy(reqstates[msg.edata.debug_opened.worker_id].debugpath,
+             msg.edata.debug_opened.path);
+             reqstates[msg.edata.debug_opened.worker_id].debugflag = 1;
+
+            del_reqstates(reqstates_printed);
+            reqstates_printed =
+                print_reqstates((struct request_state *) &reqstates, workers,
+                                (char **) &worker_names);
+			break;
         default:
             printf("Unknown event!!!\n");
         }
