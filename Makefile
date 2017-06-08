@@ -19,7 +19,7 @@ obj/%.o : %.c
 
 malunas: $(objects)
 	echo $< 
-	$(CC) $(CFLAGS) $^ -o $@
+	$(CC) $(CFLAGS) $^ -lssl -lcrypto -o $@
 
 build/malunas.static: $(objects)
 	echo $<

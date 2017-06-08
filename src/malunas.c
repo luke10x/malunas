@@ -11,6 +11,10 @@
 #include <sys/ipc.h>
 #include <sys/msg.h>
 #include <sys/un.h>
+/*#include <openssl/applink.c>*/
+#include <openssl/bio.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
 
 #include "exec.h"
 #include "proxy.h"
@@ -221,6 +225,64 @@ int pass_traffic(int front_read, int front_write, int back_read, int back_write)
     }
 }
 
+void InitializeSSL()
+{
+    SSL_load_error_strings();
+    SSL_library_init();
+    OpenSSL_add_all_algorithms();
+}
+
+void DestroySSL()
+{
+    ERR_free_strings();
+    EVP_cleanup();
+}
+
+/*void ShutdownSSL()*/
+/*{*/
+    /*SSL_shutdown(ssl);*/
+    /*SSL_free(ssl);*/
+/*}*/
+
+int accept_wrapper(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
+{
+    return accept(sockfd, addr, addrlen);
+	
+#if 0
+	/* From: https://stackoverflow.com/questions/7698488/turn-a-simple-socket-into-an-ssl-socket
+     */
+	int newsockfd;
+	SSL_CTX *sslctx;
+	SSL *cSSL;
+
+	InitializeSSL();
+
+	struct sockaddr_in saiServerAddress;
+	bzero((char *) &saiServerAddress, sizeof(saiServerAddress));
+	saiServerAddress.sin_family = AF_INET;
+	saiServerAddress.sin_addr.s_addr = addr;
+	saiServerAddress.sin_port = htons(443);
+
+	newsockfd = accept(sockfd, addr, addrlen);
+
+	sslctx = SSL_CTX_new( SSLv23_server_method());
+	SSL_CTX_set_options(sslctx, SSL_OP_SINGLE_DH_USE);
+	int use_cert = SSL_CTX_use_certificate_file(sslctx, "/serverCertificate.pem" , SSL_FILETYPE_PEM);
+
+	int use_prv = SSL_CTX_use_PrivateKey_file(sslctx, "/serverCertificate.pem", SSL_FILETYPE_PEM);
+
+	cSSL = SSL_new(sslctx);
+	SSL_set_fd(cSSL, newsockfd );
+	//Here is the SSL Accept portion.  Now all reads and writes must use SSL
+	int ssl_err = SSL_accept(cSSL);
+	if(ssl_err <= 0)
+	{
+		//Error occurred, log and close down ssl
+		ShutdownSSL();
+	}
+#endif
+}
+
 /**
  * Accepts and handles one request
  */
@@ -244,7 +306,7 @@ int handle_request(int log, int listen_fd, t_modulecfg * module, int ac,
     }
 
     int conn_fd;
-    conn_fd = accept(listen_fd, (struct sockaddr *) &their_addr, &addr_size);
+    conn_fd = accept_wrapper(listen_fd, (struct sockaddr *) &their_addr, &addr_size);
 
     char s[INET6_ADDRSTRLEN];
     inet_ntop(their_addr.ss_family,

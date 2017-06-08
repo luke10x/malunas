@@ -4,6 +4,7 @@ FROM malunas:alpine
 RUN apk add --update \
     python \
     py-pip \
+    openssl \
   && pip install behave \
   && rm -rf /var/cache/apk/*
 
