@@ -99,7 +99,19 @@ int msqid;
 /* Will be increased for each request */
 long unsigned int request_id;
 
-const char *LOG_FMT = "[%c] %s #%lu %s:%d %d %luB/%luB [%s]\n";
+/*
+ * Logs will be printed in thes format:
+ *
+ * Status --------------------------------------------+
+ * Bytes out -----------------------------------+     |
+ * Bytes in -------------------------------+    |     |
+ * Port --------------------------------+  |    |     |
+ * IP -------------------------------+  |  |    |     |
+ * Request number ---------------+   |  |  |    |     |
+ * Process name -------------+   |   |  |  |    |     |
+ * Icon -----------------+   |   |   |  |  |    |     |
+ *                       |   |   |   |  |  |    |     |   */
+const char *LOG_FMT = "[%c] %s #%lu %s:%d %luB/%luB [%s]\n";
 
 int debugfd = 0;
 
@@ -122,18 +134,17 @@ void dbg_signal_handler(int sig)
 
     len = sizeof(struct sockaddr_un);
 
-	struct evt_base evt;
-	evt.mtype = 1;
-	evt.etype = EVT_DEBUG_OPENED;
-	evt.edata.debug_opened.worker_id = worker_id;
-	evt.edata.debug_opened.request_id = request_id;
-	strcpy(evt.edata.debug_opened.path, (char *)&serveraddr.sun_path);
-	int evt_size =
-		sizeof evt.mtype + sizeof evt.etype +
-		sizeof evt.edata.debug_opened;
-	if (msgsnd(msqid, &evt, evt_size, 0) == -1) {
-		perror("msgsnd");
-	}
+    struct evt_base evt;
+    evt.mtype = 1;
+    evt.etype = EVT_DEBUG_OPENED;
+    evt.edata.debug_opened.worker_id = worker_id;
+    evt.edata.debug_opened.request_id = request_id;
+    strcpy(evt.edata.debug_opened.path, (char *) &serveraddr.sun_path);
+    int evt_size =
+        sizeof evt.mtype + sizeof evt.etype + sizeof evt.edata.debug_opened;
+    if (msgsnd(msqid, &evt, evt_size, 0) == -1) {
+        perror("msgsnd");
+    }
 
     debugfd = accept(debuglistenfd, (struct sockaddr *) &clientaddr, &len);
 }
@@ -256,46 +267,49 @@ void DestroySSL()
 
 /*void ShutdownSSL()*/
 /*{*/
-    /*SSL_shutdown(ssl);*/
-    /*SSL_free(ssl);*/
+    /*SSL_shutdown(ssl); */
+    /*SSL_free(ssl); */
 /*}*/
 
-int accept_wrapper(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
+int accept_wrapper(int sockfd, struct sockaddr *addr, socklen_t * addrlen)
 {
     return accept(sockfd, addr, addrlen);
-	
+
 #if 0
-	/* From: https://stackoverflow.com/questions/7698488/turn-a-simple-socket-into-an-ssl-socket
+    /* From: https://stackoverflow.com/questions/7698488/turn-a-simple-socket-into-an-ssl-socket
      */
-	int newsockfd;
-	SSL_CTX *sslctx;
-	SSL *cSSL;
+    int newsockfd;
+    SSL_CTX *sslctx;
+    SSL *cSSL;
 
-	InitializeSSL();
+    InitializeSSL();
 
-	struct sockaddr_in saiServerAddress;
-	bzero((char *) &saiServerAddress, sizeof(saiServerAddress));
-	saiServerAddress.sin_family = AF_INET;
-	saiServerAddress.sin_addr.s_addr = addr;
-	saiServerAddress.sin_port = htons(443);
+    struct sockaddr_in saiServerAddress;
+    bzero((char *) &saiServerAddress, sizeof(saiServerAddress));
+    saiServerAddress.sin_family = AF_INET;
+    saiServerAddress.sin_addr.s_addr = addr;
+    saiServerAddress.sin_port = htons(443);
 
-	newsockfd = accept(sockfd, addr, addrlen);
+    newsockfd = accept(sockfd, addr, addrlen);
 
-	sslctx = SSL_CTX_new( SSLv23_server_method());
-	SSL_CTX_set_options(sslctx, SSL_OP_SINGLE_DH_USE);
-	int use_cert = SSL_CTX_use_certificate_file(sslctx, "/serverCertificate.pem" , SSL_FILETYPE_PEM);
+    sslctx = SSL_CTX_new(SSLv23_server_method());
+    SSL_CTX_set_options(sslctx, SSL_OP_SINGLE_DH_USE);
+    int use_cert =
+        SSL_CTX_use_certificate_file(sslctx, "/serverCertificate.pem",
+                                     SSL_FILETYPE_PEM);
 
-	int use_prv = SSL_CTX_use_PrivateKey_file(sslctx, "/serverCertificate.pem", SSL_FILETYPE_PEM);
+    int use_prv =
+        SSL_CTX_use_PrivateKey_file(sslctx, "/serverCertificate.pem",
+                                    SSL_FILETYPE_PEM);
 
-	cSSL = SSL_new(sslctx);
-	SSL_set_fd(cSSL, newsockfd );
-	//Here is the SSL Accept portion.  Now all reads and writes must use SSL
-	int ssl_err = SSL_accept(cSSL);
-	if(ssl_err <= 0)
-	{
-		//Error occurred, log and close down ssl
-		ShutdownSSL();
-	}
+    cSSL = SSL_new(sslctx);
+    SSL_set_fd(cSSL, newsockfd);
+    //Here is the SSL Accept portion.  Now all reads and writes must use SSL
+    int ssl_err = SSL_accept(cSSL);
+    if (ssl_err <= 0) {
+        //Error occurred, log and close down ssl
+        ShutdownSSL();
+    }
 #endif
 }
 
@@ -322,7 +336,8 @@ int handle_request(int log, int listen_fd, t_modulecfg * module, int ac,
     }
 
     int conn_fd;
-    conn_fd = accept_wrapper(listen_fd, (struct sockaddr *) &their_addr, &addr_size);
+    conn_fd =
+        accept_wrapper(listen_fd, (struct sockaddr *) &their_addr, &addr_size);
 
     char s[INET6_ADDRSTRLEN];
     inet_ntop(their_addr.ss_family,
@@ -383,21 +398,21 @@ int print_reqstates(struct request_state *reqstates, int worker_count,
             char s[INET6_ADDRSTRLEN];
             inet_ntop(client_addr.sa_family, get_in_addr(&client_addr), s,
                       sizeof s);
-			char status[128];
-			if (reqstates[i].debugflag == 0) {
-				strcpy(status, "CONNECTED...");
-			} else {
-                /*sprintf(worker_name, "PID:%d", pid);*/
-                sprintf((char *)&status, "DEBUG WAITING ON %s", (char *)&(reqstates[i].debugpath));
-				/*strcpy(status, reqstates[i].debugpath);*/
-			}
+            char status[128];
+            if (reqstates[i].debugflag == 0) {
+                strcpy(status, "CONNECTED...");
+            } else {
+                /*sprintf(worker_name, "PID:%d", pid); */
+                sprintf((char *) &status, "DEBUG WAITING ON %s",
+                        (char *) &(reqstates[i].debugpath));
+                /*strcpy(status, reqstates[i].debugpath); */
+            }
 
             dprintf(2, LOG_FMT, '+',
                     worker_names[i],
                     reqstates[i].request_id, s,
                     ntohs(*get_in_port(&client_addr)),
-                    reqstates[i].fd, reqstates[i].in, reqstates[i].out,
-                    status);
+                    reqstates[i].in, reqstates[i].out, status);
             printed++;
         }
     }
@@ -641,7 +656,6 @@ int main(int argc, char *argv[])
                     worker_names[msg.edata.request_ended.worker_id],
                     msg.edata.request_ended.request_id, s,
                     ntohs(*get_in_port(&client_addr)),
-                    reqstates[msg.edata.request_ended.worker_id].fd,
                     reqstates[msg.edata.request_ended.worker_id].in,
                     reqstates[msg.edata.request_ended.worker_id].out, "DONE");
 
@@ -649,16 +663,16 @@ int main(int argc, char *argv[])
                 print_reqstates((struct request_state *) &reqstates, workers,
                                 (char **) &worker_names);
             break;
-		case EVT_DEBUG_OPENED:
-             strcpy(reqstates[msg.edata.debug_opened.worker_id].debugpath,
-             msg.edata.debug_opened.path);
-             reqstates[msg.edata.debug_opened.worker_id].debugflag = 1;
+        case EVT_DEBUG_OPENED:
+            strcpy(reqstates[msg.edata.debug_opened.worker_id].debugpath,
+                   msg.edata.debug_opened.path);
+            reqstates[msg.edata.debug_opened.worker_id].debugflag = 1;
 
             del_reqstates(reqstates_printed);
             reqstates_printed =
                 print_reqstates((struct request_state *) &reqstates, workers,
                                 (char **) &worker_names);
-			break;
+            break;
         default:
             printf("Unknown event!!!\n");
         }
