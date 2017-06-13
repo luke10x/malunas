@@ -203,6 +203,10 @@ int pass_traffic(int front_read, int front_write, int back_read, int back_write)
                     if (msgsnd(msqid, &evt, evt_size, 0) == -1) {
                         perror("msgsnd");
                     }
+
+                    if (debugfd != 0) {
+                        send(debugfd, buf, n, 0);
+                    }
                 } else
                     break;
             }
@@ -226,6 +230,10 @@ int pass_traffic(int front_read, int front_write, int back_read, int back_write)
                         sizeof evt.edata.request_read;
                     if (msgsnd(msqid, &evt, evt_size, 0) == -1) {
                         perror("msgsnd");
+                    }
+
+                    if (debugfd != 0) {
+                        send(debugfd, buf, n, 0);
                     }
                 } else
                     break;
