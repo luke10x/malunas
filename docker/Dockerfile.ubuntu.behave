@@ -1,0 +1,16 @@
+# vim: syntax=dockerfile
+FROM malunas:ubuntu
+
+RUN apt-get update \
+  && apt-get install -y \
+    python \
+    python-pip \
+    libssl-dev \
+  && pip install behave \
+  && rm -rf /var/lib/apt/lists/*
+
+ADD ./features /features
+ADD ./scripts/program.py ./scripts/program.py
+
+ENTRYPOINT ["/malunas"]
+CMD ["23", "exec", "behave"]

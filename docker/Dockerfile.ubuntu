@@ -1,0 +1,7 @@
+# vim: syntax=dockerfile
+FROM ubuntu
+
+ADD ./build/malunas.ubuntu /malunas
+
+ENTRYPOINT ["/malunas"]
+CMD ["23", "sh"]
