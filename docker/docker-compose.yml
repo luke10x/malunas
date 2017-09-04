@@ -3,7 +3,7 @@ version: '2'
 services:
   web:
     container_name: web
-    image: malunas-webserver
+    image: devel-webserver
     ports:
       - "10080:80/tcp"
     networks:
@@ -12,11 +12,10 @@ services:
 
   behave:
     container_name: behave
-    image: malunas-behave:latest
+    image: malunas-behave:${BASE}
     networks:
       malunas-world:
         aliases: []
-    #command: behave
 
 networks:
   malunas-world:
